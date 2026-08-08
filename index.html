@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>神憶組合效果查詢系統</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #0f0f11;
+            color: #e1e1e6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #f39c12;
+            margin-bottom: 20px;
+            letter-spacing: 1.5px;
+        }
+        /* 頁籤 Tab 樣式 */
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #aaa;
+            background-color: #1a1a1e;
+            border: 2px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .tab-button:hover {
+            color: #fff;
+            border-color: #e67e22;
+        }
+        .tab-button.active {
+            color: #fff;
+            background-color: #e67e22;
+            border-color: #f1c40f;
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+        }
+        /* 搜尋列 */
+        .search-container {
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            background-color: #0f0f11;
+            padding-bottom: 10px;
+        }
+        .search-box {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 16px;
+            border: 2px solid #e67e22;
+            border-radius: 8px;
+            background-color: #1a1a1e;
+            color: #fff;
+            box-sizing: border-box;
+            outline: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .search-box:focus {
+            border-color: #f1c40f;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #16161a;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #2a2a30;
+        }
+        th {
+            background-color: #222228;
+            color: #f39c12;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+        tr:hover {
+            background-color: #25252d;
+        }
+        .rune-tag {
+            display: inline-block;
+            background-color: #2d2b1f;
+            color: #f1c40f;
+            border: 1px solid #7f6a20;
+            padding: 2px 8px;
+            margin-right: 4px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .rune-tag:hover {
+            background-color: #e67e22;
+            color: #fff;
+        }
+        .no-result {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+            font-size: 16px;
+        }
+        .counter {
+            margin-bottom: 10px;
+            color: #aaa;
+            font-size: 14px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>神憶組合效果查詢系統</h1>
+    
+    <!-- 分頁按鈕 -->
+    <div class="tab-container">
+        <button class="tab-button active" id="tab-weapon" onclick="switchTab('weapon')">⚔️ 武器神憶</button>
+        <button class="tab-button" id="tab-armor" onclick="switchTab('armor')">🛡️ 盔甲神憶</button>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" class="search-box" placeholder="輸入要查詢的『神文』單字（例如：焱、燮、婭、爚、摩、淼）..." onkeyup="filterTable()">
+    </div>
+
+    <div class="counter" id="recordCount">顯示筆數：0</div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 20%;">神憶名稱</th>
+                    <th style="width: 25%;">組合神文</th>
+                    <th style="width: 55%;">神文效果</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 武器神憶資料
+    const weaponData = [
+        { name: "災火餘", runes: ["焱", "炯", "洛", "-"], effect: "天使系傷害加成+20、泰坦系傷害加成+20、惡魔系傷害加成+20" },
+        { name: "末日燎原", runes: ["焱", "炯", "洛", "勒"], effect: "天使系傷害加成+40、泰坦系傷害加成+40、惡魔系傷害加成+40" },
+        { name: "翼標", runes: ["甸", "瓦", "-", "-"], effect: "近距離傷害+4" },
+        { name: "聖光孔", runes: ["甸", "瓦", "榮", "-"], effect: "近距離傷害+4、天使系傷害加成+40" },
+        { name: "破翼擊", runes: ["甸", "瓦", "卍", "-"], effect: "3%機率提升傷害15%、天使系傷害加成+40、近距離傷害+6" },
+        { name: "墜天貫穿", runes: ["甸", "瓦", "榮", "燮"], effect: "近距離傷害+4、天使系傷害加成+40、6%機率提升傷害15%" },
+        { name: "裂聖狙殺", runes: ["甸", "瓦", "卍", "燮"], effect: "近距離傷害+4、天使系傷害加成+60、9%機率提升傷害15%" },
+        { name: "逆光", runes: ["殤", "契", "-", "-"], effect: "遠距離傷害+4" },
+        { name: "聖域碎", runes: ["殤", "契", "熙", "-"], effect: "遠距離傷害+4、天使系傷害加成+40" },
+        { name: "褻聖斬", runes: ["殤", "契", "婭", "-"], effect: "3%機率提升傷害15%、天使系傷害加成+40、遠距離傷害+6" },
+        { name: "墮天裁決", runes: ["殤", "契", "熙", "勒"], effect: "遠距離傷害+4、天使系傷害加成+40、6%機率提升傷害15%" },
+        { name: "屠聖終章", runes: ["殤", "契", "婭", "勒"], effect: "遠距離傷害+4、天使系傷害加成+60、9%機率提升傷害15%" },
+        { name: "巨影", runes: ["諾", "炯", "-", "-"], effect: "近距離傷害+4" },
+        { name: "岩甲穿", runes: ["諾", "炯", "斯", "-"], effect: "近距離傷害+4、泰坦系傷害加成+40" },
+        { name: "破嶺擊", runes: ["諾", "炯", "坦", "-"], effect: "3%機率提升傷害15%、泰坦系傷害加成+40、近距離傷害+6" },
+        { name: "崩岳貫穿", runes: ["諾", "炯", "斯", "卍"], effect: "近距離傷害+4、泰坦系傷害加成+40、6%機率提升傷害15%" },
+        { name: "滅坦狙殺", runes: ["諾", "炯", "坦", "卍"], effect: "近距離傷害+4、泰坦系傷害加成+60、9%機率提升傷害15%" },
+        { name: "巨軀", runes: ["泰", "叱", "-", "-"], effect: "遠距離傷害+4" },
+        { name: "岩鎧碎", runes: ["泰", "叱", "洛", "-"], effect: "遠距離傷害+4、泰坦系傷害加成+40" },
+        { name: "碎嶺斬", runes: ["泰", "叱", "勒", "-"], effect: "3%機率提升傷害15%、泰坦系傷害加成+40、遠距離傷害+6" },
+        { name: "崩山裁決", runes: ["泰", "叱", "洛", "輝"], effect: "遠距離傷害+4、泰坦系傷害加成+40、6%機率提升傷害15%" },
+        { name: "屠坦終章", runes: ["泰", "叱", "勒", "輝"], effect: "遠距離傷害+4、泰坦系傷害加成+60、9%機率提升傷害15%" },
+        { name: "魔痕", runes: ["煨", "斯", "-", "-"], effect: "近距離傷害+4" },
+        { name: "邪焰孔", runes: ["煨", "斯", "旭", "-"], effect: "近距離傷害+4、惡魔系傷害加成+40" },
+        { name: "破獄擊", runes: ["煨", "斯", "燮", "-"], effect: "3%機率提升傷害15%、惡魔系傷害加成+40、近距離傷害+6" },
+        { name: "深淵貫穿", runes: ["煨", "斯", "旭", "坦"], effect: "近距離傷害+4、惡魔系傷害加成+40、6%機率提升傷害15%" },
+        { name: "誅魔狙殺", runes: ["煨", "斯", "燮", "坦"], effect: "近距離傷害+4、惡魔系傷害加成+60、9%機率提升傷害15%" },
+        { name: "魔狙", runes: ["怨", "撼", "-", "-"], effect: "遠距離傷害+4" },
+        { name: "邪鐵碎", runes: ["怨", "撼", "迪", "-"], effect: "遠距離傷害+4、惡魔系傷害加成+40" },
+        { name: "破魔斬", runes: ["怨", "撼", "婭", "-"], effect: "3%機率提升傷害15%、惡魔系傷害加成+40、遠距離傷害+6" },
+        { name: "煉獄裁決", runes: ["怨", "撼", "迪", "奧"], effect: "遠距離傷害+4、惡魔系傷害加成+40、6%機率提升傷害15%" },
+        { name: "屠魔終章", runes: ["怨", "撼", "婭", "奧"], effect: "遠距離傷害+4、惡魔系傷害加成+60、9%機率提升傷害15%" },
+        { name: "能脈", runes: ["泠", "迪", "-", "-"], effect: "魔法爆擊率+4" },
+        { name: "魔律曲", runes: ["泠", "迪", "榮", "-"], effect: "魔法爆擊率+4、智力+1" },
+        { name: "法核爆裂", runes: ["泠", "迪", "榮", "爚"], effect: "魔法爆擊率+4、智力+1、魔攻+6" },
+        { name: "專注", runes: ["庠", "仝", "-", "-"], effect: "技術命中+4" },
+        { name: "鋼心準", runes: ["庠", "仝", "旭", "-"], effect: "近距離攻擊+4、技術命中+4" },
+        { name: "戰志命中", runes: ["庠", "仝", "旭", "卍"], effect: "力量+1、近距離攻擊+6、技術命中+8" },
+        { name: "靈感", runes: ["莫", "凡", "-", "-"], effect: "精靈命中+4" },
+        { name: "翱影準", runes: ["莫", "凡", "榮", "-"], effect: "近距離攻擊+4、精靈命中+4" },
+        { name: "命軌靈律", runes: ["莫", "凡", "榮", "婭"], effect: "力量+1、近距離攻擊+6、精靈命中+8" },
+        { name: "龍鏈", runes: ["克", "瓦", "-", "-"], effect: "龍屬命中+4" },
+        { name: "鎮牙準", runes: ["克", "瓦", "熙", "-"], effect: "近距離攻擊+4、龍屬命中+4" },
+        { name: "龍擊必中", runes: ["克", "瓦", "熙", "坦"], effect: "力量+1、近距離攻擊+6、龍屬命中+8" },
+        { name: "震懾", runes: ["沁", "仄", "-", "-"], effect: "恐怖命中+4" },
+        { name: "戰懾準", runes: ["沁", "仄", "洛", "-"], effect: "近距離攻擊+4、恐怖命中+4" },
+        { name: "血威制壓", runes: ["沁", "仄", "洛", "奧"], effect: "力量+1、近距離攻擊+6、恐怖命中+8" },
+        { name: "誓念韻", runes: ["炯", "叱", "洛", "-"], effect: "天使系傷害加成+40、1%收取魔力+14" },
+        { name: "頭標信仰", runes: ["炯", "叱", "洛", "爚"], effect: "天使系傷害加成+60、1%收取魔力+14、火屬性防禦+10" },
+        { name: "荒獵跡", runes: ["炯", "迪", "熙", "-"], effect: "泰坦系傷害加成+40、1%收取體力+14" },
+        { name: "無盡荒獵", runes: ["炯", "迪", "熙", "勒"], effect: "泰坦系傷害加成+60、1%收取體力+14、地屬性防禦+10" },
+        { name: "審判裁", runes: ["迪", "旭", "洛", "-"], effect: "惡魔系傷害加成+40、PVP額外傷害+4" },
+        { name: "末日審判", runes: ["迪", "旭", "洛", "燮"], effect: "惡魔系傷害加成+60、PVP額外傷害+4、水屬性防禦+10" },
+        { name: "原罪", runes: ["叱", "斯", "-", "-"], effect: "魔法命中+1" },
+        { name: "原之罪", runes: ["叱", "斯", "卍", "-"], effect: "精神+1、魔法命中+2" },
+        { name: "不滅原罪", runes: ["叱", "斯", "卍", "劮"], effect: "智力+1、精神+2、魔法命中+4" },
+        { name: "冥血", runes: ["契", "沌", "-", "-"], effect: "近距離命中+2、3%機率傷害提升15%" },
+        { name: "冥血脈", runes: ["契", "沌", "坦", "-"], effect: "力量+1、近距離命中+4、6%機率傷害提升15%" },
+        { name: "冥血之裔", runes: ["契", "沌", "坦", "奧"], effect: "力量+1、近距離命中+6、9%機率傷害提升15%" },
+        { name: "屠戮", runes: ["契", "洛", "-", "-"], effect: "PVP額外傷害+2、2%機率傷害提升15%" },
+        { name: "屠戮令", runes: ["契", "洛", "奧", "-"], effect: "敏捷+1、PVP額外傷害+4、6%機率傷害提升15%" },
+        { name: "屠戮殆盡", runes: ["契", "洛", "奧", "爚"], effect: "敏捷+1、PVP額外傷害+6、9%機率傷害提升15%" },
+        { name: "聖諭", runes: ["旭", "熙", "-", "-"], effect: "近距離攻擊+6" },
+        { name: "聖諭錄", runes: ["旭", "熙", "爚", "-"], effect: "近距離攻擊+6、魔法命中+2" },
+        { name: "聖諭史詩", runes: ["旭", "熙", "爚", "璿"], effect: "近距離攻擊+6、1%收取魔力+14、魔法命中+4" },
+        { name: "精靈誓", runes: ["叱", "卍", "婭", "-"], effect: "精靈命中+4、遠距離命中+4、遠距離傷害+4" },
+        { name: "精靈神話", runes: ["叱", "卍", "婭", "勒"], effect: "精靈命中+8、遠距離命中+6、遠距離傷害+6" },
+        { name: "雷鳴起", runes: ["洛", "爚", "輝", "-"], effect: "6%機率傷害提升15%、魔法爆擊率+2%、擊中時5%施展極道落雷" },
+        { name: "萬雷的怒吼", runes: ["洛", "爚", "輝", "璿"], effect: "9%機率傷害提升15%、魔法爆擊率+4%、擊中時8%施展極道落雷" },
+        { name: "赤焰兆", runes: ["斯", "坦", "燮", "-"], effect: "近距離命中+4、PVP額外傷害+2、擊中時3%施展烈炎術" },
+        { name: "末日的狂歡", runes: ["斯", "坦", "燮", "奧"], effect: "近距離命中+6、PVP額外傷害+4、擊中時6%施展烈炎術" },
+        { name: "地血汲", runes: ["赫", "坦", "璿", "-"], effect: "6%機率傷害提升15%、1%收取體力+14、擊中時3%發動吸血鬼之吻" },
+        { name: "蓋婭的復仇", runes: ["赫", "坦", "璿", "劮"], effect: "9%機率傷害提升15%、1%收取體力+21、擊中時6%發動吸血鬼之吻" },
+        { name: "風暴", runes: ["斯", "輝", "爚", "-"], effect: "1%收取魔力+14、傷害減免+2、擊中時1%發動雷霆風暴" },
+        { name: "暴虐", runes: ["斯", "輝", "爚", "璿"], effect: "1%收取魔力+21、傷害減免+4、擊中時3%發動雷霆風暴" },
+        { name: "迅流動", runes: ["卍", "燮", "輝", "-"], effect: "技術命中+8、精靈命中+8、閃避率+10" },
+        { name: "急速之流", runes: ["卍", "燮", "輝", "劮"], effect: "技術命中+12、精靈命中+12、閃避率+20" },
+        { name: "霜銑", runes: ["坦", "卍", "-", "-"], effect: "1%收取體力+7、藥水恢復量+3、藥水恢復率+3%、擊中時2%施展冰錐" },
+        { name: "寒冷冽", runes: ["坦", "卍", "爚", "-"], effect: "1%收取體力+14、藥水恢復量+6、藥水恢復率+6%、擊中時5%施展冰錐" },
+        { name: "殘暴的榮耀", runes: ["坦", "卍", "爚", "璿"], effect: "1%收取體力+21、藥水恢復量+9、藥水恢復率+9%、擊中時8%施展冰錐" },
+        { name: "悔誓", runes: ["奧", "燮", "-", "-"], effect: "近距離攻擊+2、近距離爆擊率+2%、擊中時1%施展究極光裂術" },
+        { name: "稟魔誓", runes: ["奧", "燮", "爚", "-"], effect: "近距離攻擊+4、近距離爆擊率+4%、擊中時2%施展究極光裂術" },
+        { name: "惡魔的背棄", runes: ["奧", "燮", "爚", "輝"], effect: "近距離攻擊+6、近距離爆擊率+6%、擊中時3%施展究極光裂術" },
+        { name: "霸影", runes: ["卍", "坦", "-", "-"], effect: "遠距離爆擊率+2%、魔法爆擊率+2%、擊中時1%施展地裂術" },
+        { name: "權勢裂", runes: ["卍", "坦", "燮", "-"], effect: "遠距離爆擊率+4%、魔法爆擊率+4%、擊中時3%施展地裂術" },
+        { name: "霸業的沉淪", runes: ["卍", "坦", "燮", "璿"], effect: "遠距離爆擊率+6%、魔法爆擊率+6%、擊中時6%施展地裂術" },
+        { name: "神裂", runes: ["婭", "奧", "-", "-"], effect: "3%機率傷害提升15%、藥水恢復量+3、藥水恢復率+3%、擊中時1%施展寒冰尖刺" },
+        { name: "叛神令", runes: ["婭", "奧", "燮", "-"], effect: "6%機率傷害提升15%、藥水恢復量+6、藥水恢復率+6%、擊中時2%施展寒冰尖刺" },
+        { name: "諸神的反叛", runes: ["婭", "奧", "燮", "璿"], effect: "9%機率傷害提升15%、藥水恢復量+9、藥水恢復率+9%、擊中時4%施展寒冰尖刺" },
+        { name: "至高誓", runes: ["燮", "奧", "爚", "-"], effect: "近距離攻擊+4、近距離爆擊率+4%、擊中時1%發動流星雨" },
+        { name: "無上的誓言", runes: ["燮", "奧", "爚", "劮"], effect: "近距離攻擊+6、近距離爆擊率+6%、擊中時3%發動流星雨" },
+        { name: "聖光護", runes: ["卍", "坦", "勒", "-"], effect: "力量+1、近距離命中+4、擊中時1%發動聖結界" },
+        { name: "天使的庇護", runes: ["卍", "坦", "勒", "劮"], effect: "力量+1、近距離命中+6、擊中時2%發動聖結界" },
+        { name: "怒兆", runes: ["坦", "婭", "-", "-"], effect: "1%收取魔力+7、傷害減免+2、擊中時1%發動地裂術" },
+        { name: "泰權怒", runes: ["坦", "婭", "卍", "-"], effect: "1%收取魔力+14、傷害減免+4、擊中時3%發動地裂術" },
+        { name: "克洛諾斯之怒", runes: ["坦", "婭", "卍", "燮"], effect: "1%收取魔力+21、傷害減免+6、擊中時6%發動地裂術" },
+        { name: "焰勢動", runes: ["婭", "坦", "卍", "-"], effect: "1%收取魔力+7、傷害減免+2、擊中時1%發動流星雨" },
+        { name: "怒火燎原", runes: ["婭", "坦", "卍", "輝"], effect: "1%收取魔力+21、傷害減免+4、擊中時3%發動流星雨" },
+        { name: "恩光", runes: ["奧", "勒", "-", "-"], effect: "近距離爆擊率+2%、遠距離爆擊率+2%、1%施展仝部治癒術" },
+        { name: "聖恩臨", runes: ["奧", "勒", "輝", "-"], effect: "近距離爆擊率+4%、遠距離爆擊率+4%、2%施展仝部治癒術" },
+        { name: "天使的救贖", runes: ["奧", "勒", "輝", "璿"], effect: "近距離爆擊率+6%、遠距離爆擊率+6%、4%施展仝部治癒術" },
+        { name: "雲潮動", runes: ["坦", "卍", "輝", "-"], effect: "3%機率傷害提升15%、1%收取魔力+7、擊中時1%施展龍捲風" },
+        { name: "風起雲湧", runes: ["坦", "卍", "輝", "璿"], effect: "6%機率傷害提升15%、1%收取魔力+14、擊中時3%施展龍捲風" },
+        { name: "星湧", runes: ["坦", "燮", "-", "-"], effect: "近距離傷害+2、1%收取魔力+7、擊中時1%機率施展魔力奪取" },
+        { name: "星牽引", runes: ["坦", "燮", "爚", "-"], effect: "近距離傷害+4、1%收取魔力+14、擊中時3%機率施展魔力奪取" },
+        { name: "吸星渦流", runes: ["坦", "燮", "爚", "璿"], effect: "近距離傷害+6、1%收取魔力+21、擊中時6%機率施展魔力奪取" }
+    ];
+
+    // 盔甲神憶資料
+    const armorData = [
+        { name: "神暮臨", runes: ["焱", "撼", "洛", "-"], effect: "天使系傷害加成+20、泰坦系傷害加成+20、惡魔系傷害加成+20" },
+        { name: "諸神黃昏", runes: ["焱", "撼", "洛", "勒"], effect: "天使系傷害加成+40、泰坦系傷害加成+40、惡魔系傷害加成+40" },
+        { name: "佛癒", runes: ["焱", "沌", "-", "-"], effect: "藥水恢復量+6、藥水恢復率+6%" },
+        { name: "佛恩療", runes: ["焱", "沌", "穆", "-"], effect: "體力回復+14、藥水恢復量+6、藥水恢復率+6%" },
+        { name: "藥師佛", runes: ["焱", "沌", "璿", "-"], effect: "體力回復+7、魔力回復+14、藥水恢復量+9、藥水恢復率+9%" },
+        { name: "淨世藥光", runes: ["焱", "沌", "穆", "璿"], effect: "體力上限+70、體力回復+14、藥水恢復量+9、藥水恢復率+9%" },
+        { name: "羅生裁", runes: ["淼", "仝", "奧", "-"], effect: "天使系傷害減免+5、傷害減免+4、體力上限+105" },
+        { name: "羅生刑", runes: ["淼", "仝", "坦", "-"], effect: "泰坦系傷害減免+5、傷害減免+4、體力上限+105" },
+        { name: "羅生盡", runes: ["淼", "仝", "燮", "-"], effect: "惡魔系傷害減免+5、傷害減免+4、體力上限+105" },
+        { name: "終羅生", runes: ["淼", "仝", "凡", "-"], effect: "天使系傷害減免+10、泰坦系傷害減免+10、惡魔系傷害減免+10" },
+        { name: "三重羅生", runes: ["淼", "仝", "凡", "婭"], effect: "天使系傷害減免+20、泰坦系傷害減免+20、惡魔系傷害減免+20" },
+        { name: "浮榮", runes: ["摩", "仝", "-", "-"], effect: "體力上限+35" },
+        { name: "榮華幻", runes: ["摩", "仝", "旭", "-"], effect: "體力上限+35、魔力上限+35" },
+        { name: "無窮虛榮", runes: ["摩", "仝", "旭", "璿"], effect: "體力上限+70、魔力上限+70、PVP傷害減免+6" },
+        { name: "聖臨", runes: ["圭", "凡", "-", "-"], effect: "物理防禦-4" },
+        { name: "萬物聖", runes: ["圭", "凡", "洛", "-"], effect: "物理防禦-4、金幣獲得+15%" },
+        { name: "萬物巨聖", runes: ["圭", "凡", "洛", "奧"], effect: "智力+1、物理防禦-4、金幣獲得+15%" },
+        { name: "古擁", runes: ["漪", "迪", "-", "-"], effect: "龍屬耐性+8" },
+        { name: "神臂攬", runes: ["漪", "迪", "凡", "-"], effect: "龍屬耐性+8、PVP傷害減免+4" },
+        { name: "古神擁抱", runes: ["漪", "迪", "凡", "勒"], effect: "物理防禦-4、龍屬耐性+8、PVP傷害減免+6" },
+        { name: "削傷", runes: ["別", "榮", "-", "-"], effect: "傷害減免+4" },
+        { name: "減傷盾", runes: ["別", "榮", "撼", "-"], effect: "體力上限+35、傷害減免+4" },
+        { name: "吸傷壁", runes: ["別", "榮", "燮", "-"], effect: "地屬性防禦+5、體力上限+70、傷害減免+6" },
+        { name: "護壁削傷", runes: ["別", "榮", "撼", "燮"], effect: "魔法防禦+6、物理防禦-4、PVP傷害減免+6" },
+        { name: "滅聖", runes: ["嵐", "瓦", "-", "-"], effect: "魔法防禦+6" },
+        { name: "裂天使", runes: ["嵐", "瓦", "穆", "-"], effect: "魔法防禦+6、天使系傷害加成+40" },
+        { name: "褻聖擊", runes: ["嵐", "瓦", "奧", "-"], effect: "體力回復量+7、天使系傷害加成+40、魔法防禦+10" },
+        { name: "褻聖制裁", runes: ["嵐", "瓦", "穆", "爚"], effect: "魔法防禦+6、天使系傷害加成+40、體力回復量+14" },
+        { name: "弒聖裁決", runes: ["嵐", "瓦", "奧", "爚"], effect: "魔法防禦+6、天使系傷害加成+60、體力回復量+21" },
+        { name: "滅邪", runes: ["巽", "仄", "-", "-"], effect: "傷害減免+4" },
+        { name: "破邪魔", runes: ["巽", "仄", "洛", "-"], effect: "傷害減免+4、惡魔系傷害加成+40" },
+        { name: "滅邪擊", runes: ["巽", "仄", "坦", "-"], effect: "體力回復量+7、惡魔系傷害加成+40、傷害減免+6" },
+        { name: "煉獄制裁", runes: ["巽", "仄", "洛", "勒"], effect: "傷害減免+4、惡魔系傷害加成+40、體力回復量+14" },
+        { name: "誅魔裁決", runes: ["巽", "仄", "坦", "勒"], effect: "傷害減免+4、惡魔系傷害加成+60、體力回復量+21" },
+        { name: "滅坦", runes: ["囚", "撼", "-", "-"], effect: "體力上限+35" },
+        { name: "滅泰力", runes: ["囚", "撼", "叱", "-"], effect: "體力上限+70、泰坦系傷害加成+40" },
+        { name: "碎嶺擊", runes: ["囚", "撼", "婭", "-"], effect: "體力回復量+14、泰坦系傷害加成+40、體力上限+105" },
+        { name: "崩泰破碎", runes: ["囚", "撼", "叱", "璿"], effect: "體力上限+70、泰坦系傷害加成+40、體力回復量+14" },
+        { name: "滅坦裁決", runes: ["囚", "撼", "婭", "璿"], effect: "體力上限+70、泰坦系傷害加成+60、體力回復量+21" },
+        { name: "逆神意", runes: ["迪", "撼", "洛", "-"], effect: "天使系傷害加成+40、1%收取魔力+14" },
+        { name: "神奈我何", runes: ["迪", "撼", "洛", "爚"], effect: "天使系傷害加成+60、1%收取魔力+14、火屬性防禦+10" },
+        { name: "逆靈意", runes: ["旭", "凡", "斯", "-"], effect: "泰坦系傷害加成+40、1%收取體力+14" },
+        { name: "靈奈我何", runes: ["旭", "凡", "斯", "勒"], effect: "泰坦系傷害加成+60、1%收取體力+14、地屬性防禦+10" },
+        { name: "逆魔意", runes: ["仝", "迪", "凡", "-"], effect: "惡魔系傷害加成+40、PVP傷害減免+4" },
+        { name: "魔奈我何", runes: ["仝", "迪", "凡", "劮"], effect: "惡魔系傷害加成+60、PVP傷害減免+4、水屬性防禦+10" },
+        { name: "聖壁", runes: ["迪", "沌", "-", "-"], effect: "體力上限+105" },
+        { name: "聖佑壁", runes: ["迪", "沌", "斯", "-"], effect: "天使系PVP傷害減免+5、體力上限+105" },
+        { name: "聖潔護盾", runes: ["迪", "沌", "斯", "輝"], effect: "天使系PVP傷害減免+10、物理防禦-4、體力上限+105" },
+        { name: "聖光守護", runes: ["迪", "沌", "坦", "-"], effect: "天使系PVP傷害減免+10、PVP傷害減免+2、體力上限+105" },
+        { name: "聖恩護盾", runes: ["迪", "沌", "坦", "輝"], effect: "天使系PVP傷害減免+20、PVP傷害減免+4、體力上限+105" },
+        { name: "磐守", runes: ["迪", "赫", "-", "-"], effect: "體力上限+105" },
+        { name: "磐石守", runes: ["迪", "赫", "斯", "-"], effect: "泰坦系PVP傷害減免+5、體力上限+105" },
+        { name: "磐石之固", runes: ["迪", "赫", "斯", "勒"], effect: "泰坦系PVP傷害減免+10、物理防禦-4、體力上限+105" },
+        { name: "磐岩防禦", runes: ["迪", "赫", "坦", "-"], effect: "泰坦系PVP傷害減免+10、PVP傷害減免+2、體力上限+105" },
+        { name: "磐嶽守護", runes: ["迪", "赫", "坦", "勒"], effect: "泰坦系PVP傷害減免+20、PVP傷害減免+4、體力上限+105" },
+        { name: "獄甲", runes: ["迪", "穆", "-", "-"], effect: "體力上限+105" },
+        { name: "獄焰甲", runes: ["迪", "穆", "斯", "-"], effect: "惡魔系PVP傷害減免+5、體力上限+105" },
+        { name: "烈獄煉甲", runes: ["迪", "穆", "斯", "燮"], effect: "惡魔系PVP傷害減免+10、物理防禦-4、體力上限+105" },
+        { name: "獄焰重甲", runes: ["迪", "穆", "坦", "-"], effect: "惡魔系PVP傷害減免+10、PVP傷害減免+2、體力上限+105" },
+        { name: "煉獄戰體", runes: ["迪", "穆", "坦", "燮"], effect: "惡魔系PVP傷害減免+20、PVP傷害減免+4、體力上限+105" },
+        { name: "晏尊老", runes: ["仄", "斯", "卍", "-"], effect: "智力+1、精神+1、魔法爆擊率+4" },
+        { name: "凌世尊", runes: ["契", "沌", "坦", "-"], effect: "力量+1、精神+1、近距離爆擊率+4" },
+        { name: "次元智者", runes: ["仄", "斯", "卍", "劮"], effect: "智力+1、精神+2、魔法爆擊率+6" },
+        { name: "傲世尊者", runes: ["契", "沌", "坦", "奧"], effect: "力量+2、精神+1、近距離爆擊率+6" },
+        { name: "暮巡", runes: ["穆", "赫", "-", "-"], effect: "PVP傷害減免+2、技術耐性+4" },
+        { name: "宙觀者", runes: ["穆", "赫", "沌", "-"], effect: "PVP傷害減免+2、技術耐性+8" },
+        { name: "界穹引者", runes: ["穆", "赫", "沌", "坦"], effect: "PVP傷害減免+4、技術耐性+12、魔法防禦+6" },
+        { name: "界歸者", runes: ["迪", "契", "婭", "-"], effect: "力量+1、PVP傷害減免+6" },
+        { name: "星賢者", runes: ["契", "洛", "爚", "-"], effect: "體力上限+70、PVP傷害減免+6" },
+        { name: "風引者", runes: ["仝", "熙", "奧", "-"], effect: "敏捷+1、PVP傷害減免+6" },
+        { name: "智御者", runes: ["沌", "契", "卍", "-"], effect: "智力+1、PVP傷害減免+6" },
+        { name: "夜巡御者", runes: ["迪", "契", "婭", "璿"], effect: "力量+2、PVP傷害減免+6、技術耐性+12" },
+        { name: "超凡歸者", runes: ["契", "洛", "爚", "輝"], effect: "體力上限+105、PVP傷害減免+6、技術耐性+12" },
+        { name: "尋風行者", runes: ["仝", "熙", "婭", "奧"], effect: "敏捷+2、PVP傷害減免+6、技術耐性+12" },
+        { name: "天宇賢者", runes: ["沌", "契", "卍", "輝"], effect: "智力+2、PVP傷害減免+6、技術耐性+12" },
+        { name: "緋靈炎", runes: ["仄", "爚", "璿", "-"], effect: "物理防禦-4、增加負重+300、擊中時3%施展變形術" },
+        { name: "狂靈的緋炎", runes: ["仄", "爚", "璿", "輝"], effect: "物理防禦-6、增加負重+500、擊中時6%施展變形術" },
+        { name: "英魂裔", runes: ["凡", "坦", "奧", "-"], effect: "傷害減免+4、體力上限+35、擊中時3%施展魔法封印" },
+        { name: "英魂的後裔", runes: ["凡", "坦", "奧", "劮"], effect: "傷害減免+6、體力上限+70、擊中時6%施展魔法封印" },
+        { name: "審罪光", runes: ["榮", "坦", "奧", "-"], effect: "PVP傷害減免+4、魔法防禦+3、擊中時3%發動束縛術" },
+        { name: "艾莉絲的審判", runes: ["榮", "坦", "奧", "璿"], effect: "PVP傷害減免+6、精神+1、擊中時6%發動束縛術" },
+        { name: "死亡照明", runes: ["仝", "坦", "奧", "輝"], effect: "物理防禦-4、體力上限+70、6%釋放精準目標" },
+        { name: "固守", runes: ["坦", "奧", "-", "-"], effect: "傷害減免+2、藥水恢復量+3、藥水恢復率+3%、1%機率傷害減免+60" },
+        { name: "鐵壁化", runes: ["坦", "奧", "婭", "-"], effect: "傷害減免+4、藥水恢復量+6、藥水恢復率+6%、3%機率傷害減免+60" },
+        { name: "堅不可摧", runes: ["坦", "奧", "婭", "劮"], effect: "傷害減免+6、藥水恢復量+9、藥水恢復率+9%、6%機率傷害減免+60" },
+        { name: "霜盾座", runes: ["卍", "奧", "輝", "-"], effect: "物理防禦-4、魔法防禦+6、擊中時1%施展冰矛圍籬" },
+        { name: "冰封的王座", runes: ["卍", "奧", "輝", "劮"], effect: "物理防禦-6、魔法防禦+10、擊中時2%施展冰矛圍籬" },
+        { name: "黯雷", runes: ["卍", "坦", "-", "-"], effect: "1%收取體力+7、藥水恢復量+3、藥水恢復率+3%、擊中時1%施展奪命之雷" },
+        { name: "冥雷壁", runes: ["卍", "坦", "爚", "-"], effect: "1%收取體力+14、藥水恢復量+6、藥水恢復率+6%、擊中時3%施展奪命之雷" },
+        { name: "黑雷的殞落", runes: ["卍", "坦", "爚", "璿"], effect: "1%收取體力+21、藥水恢復量+9、藥水恢復率+9%、擊中時6%施展奪命之雷" },
+        { name: "祈護", runes: ["奧", "爚", "-", "-"], effect: "1%收取體力+7、傷害減免+2、擊中時1%施展藥水霜化術" },
+        { name: "祈恩護", runes: ["奧", "爚", "輝", "-"], effect: "1%收取體力+14、傷害減免+4、擊中時3%施展藥水霜化術" },
+        { name: "祭司的庇護", runes: ["奧", "爚", "輝", "勃"], effect: "1%收取體力+21、傷害減免+6、擊中時6%施展藥水霜化術" },
+        { name: "絢殺", runes: ["坦", "卍", "-", "-"], effect: "魔法防禦+3、擊中時1%施展衝擊之暈" },
+        { name: "燦光殺", runes: ["坦", "卍", "璿", "-"], effect: "精神+1、魔法防禦+6、擊中時3%施展衝擊之暈" },
+        { name: "絢爛的虐殺", runes: ["坦", "卍", "璿", "劮"], effect: "精神+2、魔法防禦+10、擊中時5%施展衝擊之暈" },
+        { name: "有罪", runes: ["婭", "奧", "-", "-"], effect: "物理防禦-2、PVP傷害減免+2、擊中時1%施展木乃伊的詛咒" },
+        { name: "罪之判", runes: ["婭", "奧", "璿", "-"], effect: "物理防禦-4、PVP傷害減免+4、擊中時3%施展木乃伊的詛咒" },
+        { name: "不存在的審判", runes: ["婭", "奧", "璿", "劮"], effect: "物理防禦-6、PVP傷害減免+6、擊中時6%施展木乃伊的詛咒" },
+        { name: "碎境", runes: ["坦", "婭", "-", "-"], effect: "魔法防禦+3、傷害減免+2、擊中時1%施展魔力奪取" },
+        { name: "崩欲境", runes: ["坦", "婭", "爚", "-"], effect: "魔法防禦+6、傷害減免+4、擊中時3%施展魔力奪取" },
+        { name: "崩裂的幻境", runes: ["坦", "婭", "爚", "劮"], effect: "魔法防禦+10、傷害減免+6、擊中時6%施展魔力奪取" }
+    ];
+
+    let currentCategory = 'weapon';
+
+    function getActiveData() {
+        return currentCategory === 'weapon' ? weaponData : armorData;
+    }
+
+    function switchTab(category) {
+        currentCategory = category;
+        document.getElementById('tab-weapon').classList.toggle('active', category === 'weapon');
+        document.getElementById('tab-armor').classList.toggle('active', category === 'armor');
+        
+        // 清空或保留搜尋欄並重繪
+        filterTable();
+    }
+
+    function renderTable(items) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        const dataList = getActiveData();
+        
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="no-result">未找到包含該神文的組合</td></tr>';
+            document.getElementById('recordCount').innerText = '顯示筆數：0';
+            return;
+        }
+
+        items.forEach(item => {
+            const row = document.createElement('tr');
+            
+            const runeTags = item.runes
+                .filter(r => r !== '-')
+                .map(r => `<span class="rune-tag" onclick="quickSearch('${r}')">${r}</span>`)
+                .join('');
+
+            row.innerHTML = `
+                <td><strong>${item.name}</strong></td>
+                <td>${runeTags}</td>
+                <td>${item.effect}</td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        document.getElementById('recordCount').innerText = `顯示筆數：${items.length} / ${dataList.length}`;
+    }
+
+    function filterTable() {
+        const query = document.getElementById('searchInput').value.toLowerCase().trim();
+        const dataList = getActiveData();
+        
+        if (!query) {
+            renderTable(dataList);
+            return;
+        }
+
+        // 僅搜尋神文字 (runes)
+        const filteredData = dataList.filter(item => {
+            return item.runes.some(r => r !== '-' && r.toLowerCase().includes(query));
+        });
+
+        renderTable(filteredData);
+    }
+
+    function quickSearch(rune) {
+        document.getElementById('searchInput').value = rune;
+        filterTable();
+    }
+
+    // 初始化載入武器資料
+    renderTable(weaponData);
+</script>
+
+</body>
+</html>
