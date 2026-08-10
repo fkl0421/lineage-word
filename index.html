@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>神憶組合效果查詢系統</title>
+    <title>神憶組合效果與價格追蹤系統</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -13,7 +13,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
         }
         h1 {
@@ -30,8 +30,8 @@
             margin-bottom: 20px;
         }
         .tab-button {
-            padding: 12px 30px;
-            font-size: 18px;
+            padding: 12px 24px;
+            font-size: 16px;
             font-weight: bold;
             color: #aaa;
             background-color: #1a1a1e;
@@ -77,6 +77,7 @@
             overflow-x: auto;
             border-radius: 8px;
             border: 1px solid #333;
+            margin-bottom: 20px;
         }
         table {
             width: 100%;
@@ -114,6 +115,10 @@
             background-color: #e67e22;
             color: #fff;
         }
+        .price-tag {
+            color: #2ecc71;
+            font-weight: bold;
+        }
         .no-result {
             text-align: center;
             padding: 30px;
@@ -126,37 +131,157 @@
             font-size: 14px;
             text-align: right;
         }
+
+        /* 價格走勢頁面樣式 */
+        .price-panel {
+            background-color: #16161a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .form-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .form-input {
+            padding: 10px;
+            background: #1a1a1e;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+        .btn-add {
+            padding: 10px 20px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-add:hover {
+            background-color: #2ecc71;
+        }
+        .btn-del {
+            padding: 4px 8px;
+            background-color: #c0392b;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .chart-box {
+            background-color: #1a1a1e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        canvas {
+            width: 100%;
+            height: 250px;
+        }
+        h2 {
+            color: #e67e22;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+            margin-top: 25px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>神憶組合效果查詢系統</h1>
+    <h1>神憶組合效果與價格追蹤系統</h1>
     
     <!-- 分頁按鈕 -->
     <div class="tab-container">
         <button class="tab-button active" id="tab-weapon" onclick="switchTab('weapon')">⚔️ 武器神憶</button>
         <button class="tab-button" id="tab-armor" onclick="switchTab('armor')">🛡️ 盔甲神憶</button>
+        <button class="tab-button" id="tab-price" onclick="switchTab('price')">📈 價格走勢與統計</button>
     </div>
 
-    <div class="search-container">
-        <input type="text" id="searchInput" class="search-box" placeholder="輸入要查詢的『神文』單字（例如：焱、燮、婭、爚、摩、淼）..." onkeyup="filterTable()">
+    <!-- 武器與盔甲搜尋列 -->
+    <div class="search-container" id="searchPanel">
+        <input type="text" id="searchInput" class="search-box" placeholder="輸入要查詢的『神文』單字（例如：焱、爚、劮、別、淼）..." onkeyup="filterTable()">
     </div>
 
-    <div class="counter" id="recordCount">顯示筆數：0</div>
+    <!-- 武器與盔甲表格 -->
+    <div id="listSection">
+        <div class="counter" id="recordCount">顯示筆數：0</div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 18%;">神憶名稱</th>
+                        <th style="width: 22%;">組合神文</th>
+                        <th style="width: 18%;">組合估計總價</th>
+                        <th style="width: 42%;">神文效果</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 20%;">神憶名稱</th>
-                    <th style="width: 25%;">組合神文</th>
-                    <th style="width: 55%;">神文效果</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-            </tbody>
-        </table>
+    <!-- 價格統計與走勢分頁 -->
+    <div id="priceSection" class="price-panel" style="display: none;">
+        <h2>新增價格紀錄</h2>
+        <div class="form-group">
+            <select id="runeNameSelect" class="form-input" style="width: 150px;">
+                <!-- 動態載入神文字選單 -->
+            </select>
+            <input type="date" id="runeDateInput" class="form-input">
+            <input type="number" id="runePriceInput" class="form-input" placeholder="單價" style="width: 150px;">
+            <button class="btn-add" onclick="addPriceRecord()">新增紀錄</button>
+        </div>
+
+        <h2>神文字平均價格統計</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>神文字</th>
+                        <th>平均價格</th>
+                        <th>最新價格</th>
+                        <th>紀錄筆數</th>
+                    </tr>
+                </thead>
+                <tbody id="avgPriceTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <h2>走勢圖查詢</h2>
+        <div class="form-group">
+            <select id="runeSelectChart" class="form-input" onchange="drawChart()" style="width: 200px;">
+                <option value="">選擇神文字查看曲線...</option>
+            </select>
+        </div>
+
+        <div class="chart-box">
+            <canvas id="priceChart"></canvas>
+        </div>
+
+        <h2>歷史價格紀錄明細</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>神文字</th>
+                        <th>日期</th>
+                        <th>價格</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="priceTableBody">
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -366,7 +491,7 @@
         { name: "祈護", runes: ["奧", "爚", "-", "-"], effect: "1%收取體力+7、傷害減免+2、擊中時1%施展藥水霜化術" },
         { name: "祈恩護", runes: ["奧", "爚", "輝", "-"], effect: "1%收取體力+14、傷害減免+4、擊中時3%施展藥水霜化術" },
         { name: "祭司的庇護", runes: ["奧", "爚", "輝", "勃"], effect: "1%收取體力+21、傷害減免+6、擊中時6%施展藥水霜化術" },
-        { name: "絢殺", runes: ["坦", "卍", "-", "-"], effect: "魔法防禦+3、擊中時1%施展衝擊之暈" },
+        { name: "絢殺", runes: ["坦", "卍", "-", "-"], effect: "魔法防禦+3、擊中時1%施展衝擊之晕" },
         { name: "燦光殺", runes: ["坦", "卍", "璿", "-"], effect: "精神+1、魔法防禦+6、擊中時3%施展衝擊之暈" },
         { name: "絢爛的虐殺", runes: ["坦", "卍", "璿", "劮"], effect: "精神+2、魔法防禦+10、擊中時5%施展衝擊之暈" },
         { name: "有罪", runes: ["婭", "奧", "-", "-"], effect: "物理防禦-2、PVP傷害減免+2、擊中時1%施展木乃伊的詛咒" },
@@ -378,6 +503,42 @@
     ];
 
     let currentCategory = 'weapon';
+    let priceHistory = JSON.parse(localStorage.getItem('runePriceHistory')) || [];
+
+    // 自動收集所有神文字字元（排除 '-'）
+    function getAllUniqueRunes() {
+        const allRunes = new Set();
+        [...weaponData, ...armorData].forEach(item => {
+            item.runes.forEach(r => {
+                if (r !== '-') allRunes.add(r);
+            });
+        });
+        return Array.from(allRunes).sort();
+    }
+
+    // 計算各神字的最新與平均價格 Map
+    function getRunePriceStats() {
+        const stats = {};
+        priceHistory.forEach(item => {
+            if (!stats[item.name]) {
+                stats[item.name] = { total: 0, count: 0, latestPrice: 0, latestDate: '' };
+            }
+            stats[item.name].total += item.price;
+            stats[item.name].count += 1;
+
+            if (!stats[item.name].latestDate || new Date(item.date) >= new Date(stats[item.name].latestDate)) {
+                stats[item.name].latestDate = item.date;
+                stats[item.name].latestPrice = item.price;
+            }
+        });
+
+        // 計算平均
+        Object.keys(stats).forEach(name => {
+            stats[name].avg = Math.round(stats[name].total / stats[name].count);
+        });
+
+        return stats;
+    }
 
     function getActiveData() {
         return currentCategory === 'weapon' ? weaponData : armorData;
@@ -387,18 +548,32 @@
         currentCategory = category;
         document.getElementById('tab-weapon').classList.toggle('active', category === 'weapon');
         document.getElementById('tab-armor').classList.toggle('active', category === 'armor');
-        
-        // 清空或保留搜尋欄並重繪
-        filterTable();
+        document.getElementById('tab-price').classList.toggle('active', category === 'price');
+
+        if (category === 'price') {
+            document.getElementById('searchPanel').style.display = 'none';
+            document.getElementById('listSection').style.display = 'none';
+            document.getElementById('priceSection').style.display = 'block';
+            populateRuneDropdowns();
+            renderAvgPriceTable();
+            renderPriceTable();
+            drawChart();
+        } else {
+            document.getElementById('searchPanel').style.display = 'block';
+            document.getElementById('listSection').style.display = 'block';
+            document.getElementById('priceSection').style.display = 'none';
+            filterTable();
+        }
     }
 
     function renderTable(items) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
         const dataList = getActiveData();
+        const priceStats = getRunePriceStats();
         
         if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="no-result">未找到包含該神文的組合</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="no-result">未找到包含該神文的組合</td></tr>';
             document.getElementById('recordCount').innerText = '顯示筆數：0';
             return;
         }
@@ -406,14 +581,38 @@
         items.forEach(item => {
             const row = document.createElement('tr');
             
+            // 神文標籤
             const runeTags = item.runes
                 .filter(r => r !== '-')
                 .map(r => `<span class="rune-tag" onclick="quickSearch('${r}')">${r}</span>`)
                 .join('');
 
+            // 計算組合估算總價（採用最新記錄價格）
+            let totalPrice = 0;
+            let missingPrice = false;
+            item.runes.forEach(r => {
+                if (r !== '-') {
+                    if (priceStats[r] && priceStats[r].latestPrice) {
+                        totalPrice += priceStats[r].latestPrice;
+                    } else {
+                        missingPrice = true;
+                    }
+                }
+            });
+
+            let priceDisplay = '';
+            if (totalPrice === 0 && missingPrice) {
+                priceDisplay = '<span style="color:#888;">尚未記錄價格</span>';
+            } else if (missingPrice) {
+                priceDisplay = `<span class="price-tag">${totalPrice.toLocaleString()}</span> <small style="color:#e74c3c;">(部分缺價)</small>`;
+            } else {
+                priceDisplay = `<span class="price-tag">${totalPrice.toLocaleString()}</span>`;
+            }
+
             row.innerHTML = `
                 <td><strong>${item.name}</strong></td>
                 <td>${runeTags}</td>
+                <td>${priceDisplay}</td>
                 <td>${item.effect}</td>
             `;
             tbody.appendChild(row);
@@ -431,7 +630,6 @@
             return;
         }
 
-        // 僅搜尋神文字 (runes)
         const filteredData = dataList.filter(item => {
             return item.runes.some(r => r !== '-' && r.toLowerCase().includes(query));
         });
@@ -444,7 +642,186 @@
         filterTable();
     }
 
-    // 初始化載入武器資料
+    // --- 價格與統計邏輯 ---
+
+    // 初始化預設今天日期
+    document.getElementById('runeDateInput').valueAsDate = new Date();
+
+    function populateRuneDropdowns() {
+        const runes = getAllUniqueRunes();
+        const addSelect = document.getElementById('runeNameSelect');
+        const chartSelect = document.getElementById('runeSelectChart');
+        
+        const currentChartVal = chartSelect.value;
+
+        addSelect.innerHTML = '<option value="">選擇神文字...</option>';
+        chartSelect.innerHTML = '<option value="">選擇神文字查看曲線...</option>';
+
+        runes.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r;
+            opt.innerText = r;
+            addSelect.appendChild(opt);
+
+            const optChart = document.createElement('option');
+            optChart.value = r;
+            optChart.innerText = r;
+            chartSelect.appendChild(optChart);
+        });
+
+        chartSelect.value = currentChartVal;
+    }
+
+    function addPriceRecord() {
+        const name = document.getElementById('runeNameSelect').value;
+        const date = document.getElementById('runeDateInput').value;
+        const price = parseFloat(document.getElementById('runePriceInput').value);
+
+        if (!name || !date || isNaN(price)) {
+            alert('請選擇神文字、日期並輸入有效價格！');
+            return;
+        }
+
+        priceHistory.push({ id: Date.now(), name, date, price });
+        localStorage.setItem('runePriceHistory', JSON.stringify(priceHistory));
+
+        document.getElementById('runePriceInput').value = '';
+
+        renderAvgPriceTable();
+        renderPriceTable();
+        drawChart();
+    }
+
+    function deletePriceRecord(id) {
+        priceHistory = priceHistory.filter(item => item.id !== id);
+        localStorage.setItem('runePriceHistory', JSON.stringify(priceHistory));
+        renderAvgPriceTable();
+        renderPriceTable();
+        drawChart();
+    }
+
+    function renderAvgPriceTable() {
+        const tbody = document.getElementById('avgPriceTableBody');
+        tbody.innerHTML = '';
+        const stats = getRunePriceStats();
+        const runeNames = Object.keys(stats).sort();
+
+        if (runeNames.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">尚未有價格紀錄資料</td></tr>';
+            return;
+        }
+
+        runeNames.forEach(name => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${name}</strong></td>
+                <td><span class="price-tag">${stats[name].avg.toLocaleString()}</span></td>
+                <td>${stats[name].latestPrice.toLocaleString()}</td>
+                <td>${stats[name].count} 筆</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderPriceTable() {
+        const tbody = document.getElementById('priceTableBody');
+        tbody.innerHTML = '';
+
+        if (priceHistory.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">尚未有歷史明細</td></tr>';
+            return;
+        }
+
+        const sorted = [...priceHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        sorted.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${item.name}</strong></td>
+                <td>${item.date}</td>
+                <td>${item.price.toLocaleString()}</td>
+                <td><button class="btn-del" onclick="deletePriceRecord(${item.id})">刪除</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function drawChart() {
+        const canvas = document.getElementById('priceChart');
+        const ctx = canvas.getContext('2d');
+        const selectedRune = document.getElementById('runeSelectChart').value;
+
+        canvas.width = canvas.parentElement.clientWidth - 30;
+        canvas.height = 250;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (!selectedRune) {
+            ctx.fillStyle = "#888";
+            ctx.font = "16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("請選擇上方神文字以檢視價格走勢曲線", canvas.width / 2, canvas.height / 2);
+            return;
+        }
+
+        const runeRecords = priceHistory
+            .filter(r => r.name === selectedRune)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        if (runeRecords.length < 2) {
+            ctx.fillStyle = "#888";
+            ctx.font = "16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("資料筆數不足（需至少 2 筆紀錄）以劃出走勢曲線", canvas.width / 2, canvas.height / 2);
+            return;
+        }
+
+        const padding = 40;
+        const width = canvas.width - padding * 2;
+        const height = canvas.height - padding * 2;
+
+        const prices = runeRecords.map(r => r.price);
+        const maxPrice = Math.max(...prices);
+        const minPrice = Math.min(...prices);
+        const priceRange = maxPrice === minPrice ? 1 : maxPrice - minPrice;
+
+        ctx.beginPath();
+        ctx.strokeStyle = "#444";
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, canvas.height - padding);
+        ctx.lineTo(canvas.width - padding, canvas.height - padding);
+        ctx.stroke();
+
+        const points = runeRecords.map((r, idx) => {
+            const x = padding + (idx / (runeRecords.length - 1)) * width;
+            const y = canvas.height - padding - ((r.price - minPrice) / priceRange) * height;
+            return { x, y, price: r.price, date: r.date };
+        });
+
+        ctx.beginPath();
+        ctx.strokeStyle = "#e67e22";
+        ctx.lineWidth = 3;
+        points.forEach((p, idx) => {
+            if (idx === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+
+        points.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = "#f1c40f";
+            ctx.fill();
+
+            ctx.fillStyle = "#e1e1e6";
+            ctx.font = "12px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(p.price, p.x, p.y - 10);
+            ctx.fillText(p.date.slice(5), p.x, canvas.height - padding + 20);
+        });
+    }
+
+    // 初始化載入
     renderTable(weaponData);
 </script>
 
