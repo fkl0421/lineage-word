@@ -144,6 +144,7 @@
             gap: 10px;
             flex-wrap: wrap;
             margin-bottom: 20px;
+            align-items: center;
         }
         .form-input {
             padding: 10px;
@@ -152,6 +153,10 @@
             color: #fff;
             border-radius: 6px;
             font-size: 15px;
+        }
+        option {
+            background-color: #1a1a1e;
+            color: #fff;
         }
         .btn-add {
             padding: 10px 20px;
@@ -232,11 +237,19 @@
     <div id="priceSection" class="price-panel" style="display: none;">
         <h2>新增價格紀錄</h2>
         <div class="form-group">
-            <select id="runeNameSelect" class="form-input" style="width: 150px;">
-                <!-- 動態載入神文字選單 -->
+            <!-- 第 1 層：分類 -->
+            <select id="addCategorySelect" class="form-input" style="width: 160px;" onchange="onCategoryChange('addCategorySelect', 'addRuneSelect')">
+                <option value="">1. 選擇字分類...</option>
+                <option value="dim">✨ 微光神字</option>
+                <option value="bright">🌟 明亮神字</option>
+                <option value="agile">⚡ 靈動神字</option>
+            </select>
+            <!-- 第 2 層：神文字 -->
+            <select id="addRuneSelect" class="form-input" style="width: 140px;">
+                <option value="">2. 選擇神字...</option>
             </select>
             <input type="date" id="runeDateInput" class="form-input">
-            <input type="number" id="runePriceInput" class="form-input" placeholder="單價" style="width: 150px;">
+            <input type="number" id="runePriceInput" class="form-input" placeholder="單價" style="width: 130px;">
             <button class="btn-add" onclick="addPriceRecord()">新增紀錄</button>
         </div>
 
@@ -258,8 +271,16 @@
 
         <h2>走勢圖查詢</h2>
         <div class="form-group">
-            <select id="runeSelectChart" class="form-input" onchange="drawChart()" style="width: 200px;">
-                <option value="">選擇神文字查看曲線...</option>
+            <!-- 第 1 層：分類 -->
+            <select id="chartCategorySelect" class="form-input" style="width: 160px;" onchange="onCategoryChange('chartCategorySelect', 'chartRuneSelect')">
+                <option value="">1. 選擇字分類...</option>
+                <option value="dim">✨ 微光神字</option>
+                <option value="bright">🌟 明亮神字</option>
+                <option value="agile">⚡ 靈動神字</option>
+            </select>
+            <!-- 第 2 層：神文字 -->
+            <select id="chartRuneSelect" class="form-input" style="width: 140px;" onchange="drawChart()">
+                <option value="">2. 選擇神字...</option>
             </select>
         </div>
 
@@ -286,6 +307,10 @@
 </div>
 
 <script>
+    // 明亮字與靈動字分類定義
+    const BRIGHT_RUNES = new Set(["撼", "契", "洛", "赫", "炯", "凡", "叱", "旭", "榮", "穆", "仄", "沌", "斯", "迪", "熙", "仝", "瓦"]);
+    const AGILE_RUNES = new Set(["勒", "奧", "劮", "輝", "卍", "爚", "燮", "璿", "坦", "婭"]);
+
     // 武器神憶資料
     const weaponData = [
         { name: "災火餘", runes: ["焱", "炯", "洛", "-"], effect: "天使系傷害加成+20、泰坦系傷害加成+20、惡魔系傷害加成+20" },
@@ -491,9 +516,9 @@
         { name: "祈護", runes: ["奧", "爚", "-", "-"], effect: "1%收取體力+7、傷害減免+2、擊中時1%施展藥水霜化術" },
         { name: "祈恩護", runes: ["奧", "爚", "輝", "-"], effect: "1%收取體力+14、傷害減免+4、擊中時3%施展藥水霜化術" },
         { name: "祭司的庇護", runes: ["奧", "爚", "輝", "勃"], effect: "1%收取體力+21、傷害減免+6、擊中時6%施展藥水霜化術" },
-        { name: "絢殺", runes: ["坦", "卍", "-", "-"], effect: "魔法防禦+3、擊中時1%施展衝擊之晕" },
+        { name: "絢殺", runes: ["坦", "卍", "-", "-"], effect: "魔法防禦+3、擊中時1%施展衝擊之暈" },
         { name: "燦光殺", runes: ["坦", "卍", "璿", "-"], effect: "精神+1、魔法防禦+6、擊中時3%施展衝擊之暈" },
-        { name: "絢爛的虐殺", runes: ["坦", "卍", "璿", "劮"], effect: "精神+2、魔法防禦+10、擊中時5%施展衝擊之暈" },
+        { name: "絢欄的虐殺", runes: ["坦", "卍", "璿", "劮"], effect: "精神+2、魔法防禦+10、擊中時5%施展衝擊之暈" },
         { name: "有罪", runes: ["婭", "奧", "-", "-"], effect: "物理防禦-2、PVP傷害減免+2、擊中時1%施展木乃伊的詛咒" },
         { name: "罪之判", runes: ["婭", "奧", "璿", "-"], effect: "物理防禦-4、PVP傷害減免+4、擊中時3%施展木乃伊的詛咒" },
         { name: "不存在的審判", runes: ["婭", "奧", "璿", "劮"], effect: "物理防禦-6、PVP傷害減免+6、擊中時6%施展木乃伊的詛咒" },
@@ -505,15 +530,55 @@
     let currentCategory = 'weapon';
     let priceHistory = JSON.parse(localStorage.getItem('runePriceHistory')) || [];
 
-    // 自動收集所有神文字字元（排除 '-'）
-    function getAllUniqueRunes() {
+    // 自動收集所有神文字字元並分類
+    function getCategorizedRunes() {
         const allRunes = new Set();
         [...weaponData, ...armorData].forEach(item => {
             item.runes.forEach(r => {
                 if (r !== '-') allRunes.add(r);
             });
         });
-        return Array.from(allRunes).sort();
+
+        const bright = [];
+        const agile = [];
+        const dim = [];
+
+        Array.from(allRunes).sort().forEach(r => {
+            if (BRIGHT_RUNES.has(r)) {
+                bright.push(r);
+            } else if (AGILE_RUNES.has(r)) {
+                agile.push(r);
+            } else {
+                dim.push(r);
+            }
+        });
+
+        return { dim, bright, agile };
+    }
+
+    // 當第一層分類切換時，更新第二層單字選單
+    function onCategoryChange(catSelectId, runeSelectId) {
+        const catValue = document.getElementById(catSelectId).value;
+        const runeSelect = document.getElementById(runeSelectId);
+        const categorized = getCategorizedRunes();
+
+        runeSelect.innerHTML = '<option value="">2. 選擇神字...</option>';
+
+        if (!catValue || !categorized[catValue]) {
+            if (runeSelectId === 'chartRuneSelect') drawChart();
+            return;
+        }
+
+        categorized[catValue].forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r;
+            opt.innerText = r;
+            runeSelect.appendChild(opt);
+        });
+
+        if (runeSelectId === 'chartRuneSelect') {
+            drawChart();
+        }
     }
 
     // 計算各神字的最新與平均價格 Map
@@ -532,7 +597,6 @@
             }
         });
 
-        // 計算平均
         Object.keys(stats).forEach(name => {
             stats[name].avg = Math.round(stats[name].total / stats[name].count);
         });
@@ -554,7 +618,6 @@
             document.getElementById('searchPanel').style.display = 'none';
             document.getElementById('listSection').style.display = 'none';
             document.getElementById('priceSection').style.display = 'block';
-            populateRuneDropdowns();
             renderAvgPriceTable();
             renderPriceTable();
             drawChart();
@@ -581,13 +644,11 @@
         items.forEach(item => {
             const row = document.createElement('tr');
             
-            // 神文標籤
             const runeTags = item.runes
                 .filter(r => r !== '-')
                 .map(r => `<span class="rune-tag" onclick="quickSearch('${r}')">${r}</span>`)
                 .join('');
 
-            // 計算組合估算總價（採用最新記錄價格）
             let totalPrice = 0;
             let missingPrice = false;
             item.runes.forEach(r => {
@@ -644,41 +705,15 @@
 
     // --- 價格與統計邏輯 ---
 
-    // 初始化預設今天日期
     document.getElementById('runeDateInput').valueAsDate = new Date();
 
-    function populateRuneDropdowns() {
-        const runes = getAllUniqueRunes();
-        const addSelect = document.getElementById('runeNameSelect');
-        const chartSelect = document.getElementById('runeSelectChart');
-        
-        const currentChartVal = chartSelect.value;
-
-        addSelect.innerHTML = '<option value="">選擇神文字...</option>';
-        chartSelect.innerHTML = '<option value="">選擇神文字查看曲線...</option>';
-
-        runes.forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = r;
-            opt.innerText = r;
-            addSelect.appendChild(opt);
-
-            const optChart = document.createElement('option');
-            optChart.value = r;
-            optChart.innerText = r;
-            chartSelect.appendChild(optChart);
-        });
-
-        chartSelect.value = currentChartVal;
-    }
-
     function addPriceRecord() {
-        const name = document.getElementById('runeNameSelect').value;
+        const name = document.getElementById('addRuneSelect').value;
         const date = document.getElementById('runeDateInput').value;
         const price = parseFloat(document.getElementById('runePriceInput').value);
 
         if (!name || !date || isNaN(price)) {
-            alert('請選擇神文字、日期並輸入有效價格！');
+            alert('請完整選擇神文字分類、神字、日期並輸入有效價格！');
             return;
         }
 
@@ -749,7 +784,7 @@
     function drawChart() {
         const canvas = document.getElementById('priceChart');
         const ctx = canvas.getContext('2d');
-        const selectedRune = document.getElementById('runeSelectChart').value;
+        const selectedRune = document.getElementById('chartRuneSelect').value;
 
         canvas.width = canvas.parentElement.clientWidth - 30;
         canvas.height = 250;
@@ -760,7 +795,7 @@
             ctx.fillStyle = "#888";
             ctx.font = "16px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("請選擇上方神文字以檢視價格走勢曲線", canvas.width / 2, canvas.height / 2);
+            ctx.fillText("請先選擇上方『分類』與『神字』以檢視走勢曲線", canvas.width / 2, canvas.height / 2);
             return;
         }
 
