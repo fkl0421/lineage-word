@@ -118,7 +118,24 @@ export const WeaponModule = (function() {
         const tbody = document.getElementById('weaponTableBody');
         tbody.innerHTML = '<tr><td colspan="4" class="no-result">雲端資料載入中...</td></tr>';
         
-        const latestPrices = await PriceStorage.getLatestPricesAsync();
+        const history = await PriceStorage.getHistoryAsync();
+
+        // 統計各神字價格區間與最新價格
+        const runeStats = {};
+        history.forEach(item => {
+            const price = Number(item.price);
+            if (!runeStats[item.name]) {
+                runeStats[item.name] = { minPrice: price, maxPrice: price, latestPrice: price, latestDate: item.date };
+            } else {
+                if (price < runeStats[item.name].minPrice) runeStats[item.name].minPrice = price;
+                if (price > runeStats[item.name].maxPrice) runeStats[item.name].maxPrice = price;
+                if (new Date(item.date) >= new Date(runeStats[item.name].latestDate)) {
+                    runeStats[item.name].latestDate = item.date;
+                    runeStats[item.name].latestPrice = price;
+                }
+            }
+        });
+
         tbody.innerHTML = '';
 
         const filtered = data.filter(item => {
@@ -138,28 +155,51 @@ export const WeaponModule = (function() {
         filtered.forEach(item => {
             const tr = document.createElement('tr');
             
-            const runeTags = item.runes
-                .filter(r => r !== '-')
-                .map(r => `<span class="rune-tag" onclick="window.WeaponModule.quickSearchRune('${r}')">${r}</span>`)
-                .join('');
-
             let totalPrice = 0;
             let missingPrice = false;
-            item.runes.forEach(r => {
-                if (r !== '-') {
-                    if (latestPrices[r]) {
-                        totalPrice += latestPrices[r].price;
+
+            const runeTags = item.runes
+                .filter(r => r !== '-')
+                .map(r => {
+                    const stat = runeStats[r];
+                    let tooltipHtml = '';
+
+                    if (stat) {
+                        totalPrice += stat.latestPrice;
+                        const rangeText = stat.minPrice === stat.maxPrice 
+                            ? `${stat.minPrice.toLocaleString()}`
+                            : `${stat.minPrice.toLocaleString()} ~ ${stat.maxPrice.toLocaleString()}`;
+                        
+                        tooltipHtml = `
+                            <div class="rune-tooltip">
+                                <div><strong>【${r}】價格資訊</strong></div>
+                                <div>區間：${rangeText}</div>
+                                <div>最新：${stat.latestPrice.toLocaleString()} (${stat.latestDate})</div>
+                            </div>
+                        `;
                     } else {
                         missingPrice = true;
+                        tooltipHtml = `
+                            <div class="rune-tooltip">
+                                <div><strong>【${r}】價格資訊</strong></div>
+                                <div style="color:#e74c3c;">尚未登錄價格資料</div>
+                            </div>
+                        `;
                     }
-                }
-            });
 
+                    return `
+                        <div class="rune-tag-container">
+                            <span class="rune-tag" onclick="window.WeaponModule.quickSearchRune('${r}')">${r}</span>
+                            ${tooltipHtml}
+                        </div>
+                    `;
+                })
+                .join('');
+
+            // 組合估估計總價顯示邏輯：只要有缺價就顯示「缺價」
             let priceDisplay = '';
-            if (totalPrice === 0 && missingPrice) {
-                priceDisplay = '<span style="color:#888;">尚未記錄價格</span>';
-            } else if (missingPrice) {
-                priceDisplay = `<span class="price-tag">${totalPrice.toLocaleString()}</span> <small style="color:#e74c3c;">(部分缺價)</small>`;
+            if (missingPrice) {
+                priceDisplay = '<span class="price-missing">缺價</span>';
             } else {
                 priceDisplay = `<span class="price-tag">${totalPrice.toLocaleString()}</span>`;
             }
