@@ -7,15 +7,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// 2. 貼上你從 Firebase Console 專案設定取得的設定檔
-// js/common.js
+// 2. 填入 Firebase Console 取得的真實設定值
 const firebaseConfig = {
-    apiKey: "你的 apiKey",
-    authDomain: "你的 authDomain",
-    projectId: "你的 projectId",
-    storageBucket: "你的 storageBucket",
-    messagingSenderId: "你的 messagingSenderId",
-    appId: "你的 appId"
+  apiKey: "AIzaSyDlRUGx2hKgVEQbaRP7HlVzCpwbZ0HqxrA",
+  authDomain: "lineage-rune-tracker.firebaseapp.com",
+  projectId: "lineage-rune-tracker",
+  storageBucket: "lineage-rune-tracker.firebasestorage.app",
+  messagingSenderId: "272484955642",
+  appId: "1:272484955642:web:17bff62dfcd6664b67e043",
+  measurementId: "G-Y9BFYZ17KE"
 };
 
 // 初始化 Firebase
