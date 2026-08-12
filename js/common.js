@@ -2,12 +2,18 @@
 export const BRIGHT_RUNES = new Set(["撼", "契", "洛", "赫", "炯", "凡", "叱", "旭", "榮", "穆", "仄", "沌", "斯", "迪", "熙", "仝", "瓦"]);
 export const AGILE_RUNES = new Set(["勒", "奧", "劮", "輝", "卍", "爚", "燮", "璿", "坦", "婭"]);
 
+// 👑 管理者 Email 白名單（只有列表中的 Email 登入後才具備修改權限）
+const ADMIN_EMAILS = new Set([
+    "fkl0421@gmail.com", // 👈 請填入你自己的 Google 信箱
+    // "friend_email@gmail.com"     // 若要給朋友權限，可以多加幾行
+]);
+
 // 1. 引入 Firebase SDK (v10 ES Module)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// 2. 填入 Firebase Console 取得的真實設定值
+// 2. Firebase 設定檔
 const firebaseConfig = {
   apiKey: "AIzaSyDlRUGx2hKgVEQbaRP7HlVzCpwbZ0HqxrA",
   authDomain: "lineage-rune-tracker.firebaseapp.com",
@@ -24,9 +30,14 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
+// 檢查當前用戶是否為管理者
+function checkIsAdmin() {
+    if (!auth.currentUser || !auth.currentUser.email) return false;
+    return ADMIN_EMAILS.has(auth.currentUser.email.toLowerCase());
+}
+
 // 跨頁面 Firebase 價格資料管理
 export const PriceStorage = {
-    // 從 Firestore 獲取所有價格歷史紀錄
     getHistoryAsync: async function() {
         try {
             const q = query(collection(db, "rune_prices"), orderBy("date", "desc"));
@@ -42,7 +53,6 @@ export const PriceStorage = {
         }
     },
 
-    // 取得最新價格對照表
     getLatestPricesAsync: async function() {
         const history = await this.getHistoryAsync();
         const latestMap = {};
@@ -54,9 +64,8 @@ export const PriceStorage = {
         return latestMap;
     },
 
-    // 新增一筆價格紀錄到 Firestore (需 Google 驗證權限)
     addRecordAsync: async function(name, date, price) {
-        if (!auth.currentUser) throw new Error("未登入權限不足！");
+        if (!checkIsAdmin()) throw new Error("權限不足！你的帳號不在管理者白名單內。");
         const docRef = await addDoc(collection(db, "rune_prices"), {
             name: name,
             date: date,
@@ -67,14 +76,13 @@ export const PriceStorage = {
         return docRef.id;
     },
 
-    // 刪除紀錄 (需 Google 驗證權限)
     deleteRecordAsync: async function(docId) {
-        if (!auth.currentUser) throw new Error("未登入權限不足！");
+        if (!checkIsAdmin()) throw new Error("權限不足！你的帳號不在管理者白名單內。");
         await deleteDoc(doc(db, "rune_prices", docId));
     }
 };
 
-// Auth 權限模組 (對接 Firebase Google Auth)
+// Auth 權限模組
 export const Auth = {
     loginWithGoogle: async function() {
         try {
@@ -92,6 +100,10 @@ export const Auth = {
 
     isLoggedIn: function() {
         return !!auth.currentUser;
+    },
+
+    isAdmin: function() {
+        return checkIsAdmin();
     },
 
     getUser: function() {

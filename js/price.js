@@ -87,7 +87,7 @@ export const PriceModule = (function() {
 
         const history = await PriceStorage.getHistoryAsync();
         tbody.innerHTML = '';
-        const isAdmin = Auth.isLoggedIn();
+        const isAdmin = Auth.isAdmin();
 
         document.getElementById('thActionHeader').style.display = isAdmin ? 'table-cell' : 'none';
 
@@ -118,18 +118,31 @@ export const PriceModule = (function() {
 
         if (Auth.isLoggedIn()) {
             const user = Auth.getUser();
-            authBar.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <img src="${user.photoURL || ''}" style="width:24px; height:24px; border-radius:50%;" alt="Avatar">
-                    <span>當前登入：<strong>${user.displayName || user.email}</strong> [管理者權限]</span>
-                </div>
-                <button class="btn-clear" style="padding: 4px 10px; font-size: 13px;" onclick="window.PriceModule.logout()">登出</button>
-            `;
-            document.getElementById('adminAddSection').style.display = 'block';
+            const isAdmin = Auth.isAdmin();
+
+            if (isAdmin) {
+                authBar.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <img src="${user.photoURL || ''}" style="width:24px; height:24px; border-radius:50%;" alt="Avatar">
+                        <span>當前登入：<strong>${user.displayName || user.email}</strong> <span style="color:#2ecc71;">[系統管理者]</span></span>
+                    </div>
+                    <button class="btn-clear" style="padding: 4px 10px; font-size: 13px;" onclick="window.PriceModule.logout()">登出</button>
+                `;
+                document.getElementById('adminAddSection').style.display = 'block';
+            } else {
+                authBar.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <img src="${user.photoURL || ''}" style="width:24px; height:24px; border-radius:50%;" alt="Avatar">
+                        <span>當前登入：<strong>${user.displayName || user.email}</strong> <span style="color:#e74c3c;">(訪客模式 - 無修改權限)</span></span>
+                    </div>
+                    <button class="btn-clear" style="padding: 4px 10px; font-size: 13px;" onclick="window.PriceModule.logout()">登出</button>
+                `;
+                document.getElementById('adminAddSection').style.display = 'none';
+            }
         } else {
             authBar.innerHTML = `
                 <span>👀 當前身分：<strong>一般訪客 (唯讀模式)</strong></span>
-                <button class="btn-add" style="padding: 4px 12px; font-size: 13px;" onclick="window.PriceModule.loginWithGoogle()">🔑 使用 Google 帳號登入</button>
+                <button class="btn-add" style="padding: 4px 12px; font-size: 13px;" onclick="window.PriceModule.loginWithGoogle()">🔑 管理員 Google 登入</button>
             `;
             document.getElementById('adminAddSection').style.display = 'none';
         }
@@ -256,8 +269,8 @@ export const PriceModule = (function() {
             }
         },
         addRecord: async function() {
-            if (!Auth.isLoggedIn()) {
-                alert('權限不足！請先登入 Google 帳號。');
+            if (!Auth.isAdmin()) {
+                alert('權限不足！你的 Google 帳號沒有修改權限。');
                 return;
             }
 
@@ -281,8 +294,8 @@ export const PriceModule = (function() {
             }
         },
         deleteRecord: async function(id) {
-            if (!Auth.isLoggedIn()) {
-                alert('權限不足！請先登入 Google 帳號。');
+            if (!Auth.isAdmin()) {
+                alert('權限不足！你的 Google 帳號沒有修改權限。');
                 return;
             }
 
