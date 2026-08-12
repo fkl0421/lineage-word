@@ -10,6 +10,7 @@
 <div class="container">
     <h1>神憶組合效果與價格追蹤系統</h1>
     
+    <!-- 導覽列 -->
     <div class="tab-container">
         <a href="index.html" class="tab-button">⚔️ 武器神憶</a>
         <a href="armor.html" class="tab-button active">🛡️ 盔甲神憶</a>
@@ -19,10 +20,10 @@
     <!-- 3 欄式搜尋列 + 清除按鈕 -->
     <div class="search-container">
         <div class="search-grid">
-            <input type="text" id="armorSearchName" class="search-box" placeholder="搜尋神憶名稱（如：神暮）..." onkeyup="ArmorModule.filterTable()">
-            <input type="text" id="armorSearchRune" class="search-box" placeholder="搜尋神文文字（如：焱）..." onkeyup="ArmorModule.filterTable()">
-            <input type="text" id="armorSearchEffect" class="search-box" placeholder="搜尋神文效果（如：傷害減免）..." onkeyup="ArmorModule.filterTable()">
-            <button class="btn-clear" onclick="ArmorModule.clearSearch()">🧹 清除搜尋</button>
+            <input type="text" id="armorSearchName" class="search-box" placeholder="搜尋神憶名稱（如：神暮）..." onkeyup="window.ArmorModule.filterTable()">
+            <input type="text" id="armorSearchRune" class="search-box" placeholder="搜尋神文文字（如：焱）..." onkeyup="window.ArmorModule.filterTable()">
+            <input type="text" id="armorSearchEffect" class="search-box" placeholder="搜尋神文效果（如：傷害減免）..." onkeyup="window.ArmorModule.filterTable()">
+            <button class="btn-clear" onclick="window.ArmorModule.clearSearch()">🧹 清除搜尋</button>
         </div>
     </div>
 
@@ -37,16 +38,24 @@
                     <th style="width: 42%;">神文效果</th>
                 </tr>
             </thead>
-            <tbody id="armorTableBody"></tbody>
+            <tbody id="armorTableBody">
+                <tr><td colspan="4" class="no-result">資料載入中...</td></tr>
+            </tbody>
         </table>
     </div>
 </div>
 
-<!-- 改為 type="module" -->
+<!-- 使用 ES Module 載入專屬模組與初始化 -->
 <script type="module">
-    import { WeaponModule } from './js/weapon.js';
-    window.WeaponModule = WeaponModule; // 綁定到 window 給 DOM 事件呼叫
-    document.addEventListener('DOMContentLoaded', () => WeaponModule.filterTable());
+    import { ArmorModule } from './js/armor.js';
+    
+    // 將模組掛載到 window，讓 HTML 的 onkeyup 與 onclick 可以順利呼叫
+    window.ArmorModule = ArmorModule;
+
+    // 頁面載入完成後執行查詢與繪製
+    document.addEventListener('DOMContentLoaded', () => {
+        ArmorModule.filterTable();
+    });
 </script>
 </body>
 </html>
