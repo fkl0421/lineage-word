@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>武器神憶 - 神憶查詢系統</title>
+    <title>盔甲神憶 - 神憶查詢系統</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,22 +11,22 @@
     <h1>神憶組合效果與價格追蹤系統</h1>
     
     <div class="tab-container">
-        <a href="index.html" class="tab-button active">⚔️ 武器神憶</a>
-        <a href="armor.html" class="tab-button">🛡️ 盔甲神憶</a>
+        <a href="index.html" class="tab-button">⚔️ 武器神憶</a>
+        <a href="armor.html" class="tab-button active">🛡️ 盔甲神憶</a>
         <a href="price.html" class="tab-button">📈 價格走勢與統計</a>
     </div>
 
     <!-- 3 欄式搜尋列 + 清除按鈕 -->
     <div class="search-container">
         <div class="search-grid">
-            <input type="text" id="weaponSearchName" class="search-box" placeholder="搜尋神憶名稱（如：末日）..." onkeyup="WeaponModule.filterTable()">
-            <input type="text" id="weaponSearchRune" class="search-box" placeholder="搜尋神文文字（如：焱）..." onkeyup="WeaponModule.filterTable()">
-            <input type="text" id="weaponSearchEffect" class="search-box" placeholder="搜尋神文效果（如：近距離）..." onkeyup="WeaponModule.filterTable()">
-            <button class="btn-clear" onclick="WeaponModule.clearSearch()">🧹 清除搜尋</button>
+            <input type="text" id="armorSearchName" class="search-box" placeholder="搜尋神憶名稱（如：神暮）..." onkeyup="ArmorModule.filterTable()">
+            <input type="text" id="armorSearchRune" class="search-box" placeholder="搜尋神文文字（如：焱）..." onkeyup="ArmorModule.filterTable()">
+            <input type="text" id="armorSearchEffect" class="search-box" placeholder="搜尋神文效果（如：傷害減免）..." onkeyup="ArmorModule.filterTable()">
+            <button class="btn-clear" onclick="ArmorModule.clearSearch()">🧹 清除搜尋</button>
         </div>
     </div>
 
-    <div class="counter" id="weaponRecordCount">顯示筆數：0</div>
+    <div class="counter" id="armorRecordCount">顯示筆數：0</div>
     <div class="table-wrapper">
         <table>
             <thead>
@@ -37,7 +37,7 @@
                     <th style="width: 42%;">神文效果</th>
                 </tr>
             </thead>
-            <tbody id="weaponTableBody"></tbody>
+            <tbody id="armorTableBody"></tbody>
         </table>
     </div>
 </div>

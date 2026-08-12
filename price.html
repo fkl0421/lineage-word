@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>價格走勢 - 神憶查詢系統</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>神憶組合效果與價格追蹤系統</h1>
+    
+    <div class="tab-container">
+        <a href="index.html" class="tab-button">⚔️ 武器神憶</a>
+        <a href="armor.html" class="tab-button">🛡️ 盔甲神憶</a>
+        <a href="price.html" class="tab-button active">📈 價格走勢與統計</a>
+    </div>
+
+    <!-- 權限狀態條 -->
+    <div class="auth-bar" id="authBar"></div>
+
+    <div class="price-panel">
+        <!-- 僅 Google 登入後顯示的新增區塊 -->
+        <div id="adminAddSection" style="display: none;">
+            <h2>新增價格紀錄 (管理者專用)</h2>
+            <div class="form-group">
+                <select id="priceAddCatSelect" class="form-input" style="width: 160px;" onchange="window.PriceModule.onCategoryChange('priceAddCatSelect', 'priceAddRuneSelect')">
+                    <option value="">1. 選擇字分類...</option>
+                    <option value="dim">✨ 微光神字</option>
+                    <option value="bright">🌟 明亮神字</option>
+                    <option value="agile">⚡ 靈動神字</option>
+                </select>
+                <select id="priceAddRuneSelect" class="form-input" style="width: 140px;">
+                    <option value="">2. 選擇神字...</option>
+                </select>
+                <input type="date" id="priceDateInput" class="form-input">
+                <input type="number" id="priceValueInput" class="form-input" placeholder="單價" style="width: 130px;">
+                <button class="btn-add" onclick="window.PriceModule.addRecord()">新增紀錄</button>
+            </div>
+        </div>
+
+        <h2>神文字平均價格統計</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>神文字</th>
+                        <th>平均價格</th>
+                        <th>最新價格</th>
+                        <th>紀錄筆數</th>
+                    </tr>
+                </thead>
+                <tbody id="avgPriceTableBody"></tbody>
+            </table>
+        </div>
+
+        <h2>走勢圖查詢</h2>
+        <div class="form-group">
+            <select id="priceChartCatSelect" class="form-input" style="width: 160px;" onchange="window.PriceModule.onCategoryChange('priceChartCatSelect', 'priceChartRuneSelect')">
+                <option value="">1. 選擇字分類...</option>
+                <option value="dim">✨ 微光神字</option>
+                <option value="bright">🌟 明亮神字</option>
+                <option value="agile">⚡ 靈動神字</option>
+            </select>
+            <select id="priceChartRuneSelect" class="form-input" style="width: 140px;" onchange="window.PriceModule.drawChart()">
+                <option value="">2. 選擇神字...</option>
+            </select>
+        </div>
+
+        <div class="chart-box">
+            <canvas id="priceChartCanvas"></canvas>
+        </div>
+
+        <h2>歷史價格紀錄明細</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>神文字</th>
+                        <th>日期</th>
+                        <th>價格</th>
+                        <th id="thActionHeader" style="display: none;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { PriceModule } from './js/price.js';
+    window.PriceModule = PriceModule;
+    document.addEventListener('DOMContentLoaded', () => PriceModule.init());
+</script>
+</body>
+</html>

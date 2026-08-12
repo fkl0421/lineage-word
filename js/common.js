@@ -1,0 +1,108 @@
+// 全域文字分類定義
+export const BRIGHT_RUNES = new Set(["撼", "契", "洛", "赫", "炯", "凡", "叱", "旭", "榮", "穆", "仄", "沌", "斯", "迪", "熙", "仝", "瓦"]);
+export const AGILE_RUNES = new Set(["勒", "奧", "劮", "輝", "卍", "爚", "燮", "璿", "坦", "婭"]);
+
+// 1. 引入 Firebase SDK (v10 ES Module)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// 2. 貼上你從 Firebase Console 專案設定取得的設定檔
+// js/common.js
+const firebaseConfig = {
+    apiKey: "你的 apiKey",
+    authDomain: "你的 authDomain",
+    projectId: "你的 projectId",
+    storageBucket: "你的 storageBucket",
+    messagingSenderId: "你的 messagingSenderId",
+    appId: "你的 appId"
+};
+
+// 初始化 Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+// 跨頁面 Firebase 價格資料管理
+export const PriceStorage = {
+    // 從 Firestore 獲取所有價格歷史紀錄
+    getHistoryAsync: async function() {
+        try {
+            const q = query(collection(db, "rune_prices"), orderBy("date", "desc"));
+            const querySnapshot = await getDocs(q);
+            const history = [];
+            querySnapshot.forEach((docSnap) => {
+                history.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            return history;
+        } catch (error) {
+            console.error("讀取價格資料失敗:", error);
+            return [];
+        }
+    },
+
+    // 取得最新價格對照表
+    getLatestPricesAsync: async function() {
+        const history = await this.getHistoryAsync();
+        const latestMap = {};
+        history.forEach(item => {
+            if (!latestMap[item.name] || new Date(item.date) >= new Date(latestMap[item.name].date)) {
+                latestMap[item.name] = { price: Number(item.price), date: item.date };
+            }
+        });
+        return latestMap;
+    },
+
+    // 新增一筆價格紀錄到 Firestore (需 Google 驗證權限)
+    addRecordAsync: async function(name, date, price) {
+        if (!auth.currentUser) throw new Error("未登入權限不足！");
+        const docRef = await addDoc(collection(db, "rune_prices"), {
+            name: name,
+            date: date,
+            price: Number(price),
+            createdBy: auth.currentUser.email,
+            createdAt: new Date().toISOString()
+        });
+        return docRef.id;
+    },
+
+    // 刪除紀錄 (需 Google 驗證權限)
+    deleteRecordAsync: async function(docId) {
+        if (!auth.currentUser) throw new Error("未登入權限不足！");
+        await deleteDoc(doc(db, "rune_prices", docId));
+    }
+};
+
+// Auth 權限模組 (對接 Firebase Google Auth)
+export const Auth = {
+    loginWithGoogle: async function() {
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            return { success: true, user: result.user };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    logout: async function() {
+        await signOut(auth);
+        window.location.reload();
+    },
+
+    isLoggedIn: function() {
+        return !!auth.currentUser;
+    },
+
+    getUser: function() {
+        return auth.currentUser ? {
+            displayName: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            photoURL: auth.currentUser.photoURL
+        } : null;
+    },
+
+    onAuthReady: function(callback) {
+        onAuthStateChanged(auth, callback);
+    }
+};
