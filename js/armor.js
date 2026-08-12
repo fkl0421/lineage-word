@@ -162,7 +162,7 @@ export const ArmorModule = (function() {
         filtered.forEach(item => {
             const tr = document.createElement('tr');
             let totalPrice = 0;
-            let missingPrice = false;
+            const missingRunes = [];
 
             const runeTd = document.createElement('td');
 
@@ -176,7 +176,7 @@ export const ArmorModule = (function() {
                 if (stat) {
                     totalPrice += stat.latestPrice;
                 } else {
-                    missingPrice = true;
+                    missingRunes.push(r);
                 }
 
                 // 綁定 Hover 顯示動態 Floating Tooltip 事件
@@ -214,10 +214,11 @@ export const ArmorModule = (function() {
                 runeTd.appendChild(tag);
             });
 
-            // 組合估算總價：有缺價則顯示缺價
-            let priceDisplay = missingPrice 
-                ? '<span class="price-missing">缺價</span>' 
-                : `<span class="price-tag">${totalPrice.toLocaleString()}</span>`;
+            // 組合估算總價：計算已有總價，並加註缺字
+            let priceDisplay = `<span class="price-tag">${totalPrice.toLocaleString()}</span>`;
+            if (missingRunes.length > 0) {
+                priceDisplay += ` <small class="price-missing">(缺: ${missingRunes.join(', ')})</small>`;
+            }
 
             tr.innerHTML = `
                 <td><strong>${item.name}</strong></td>
