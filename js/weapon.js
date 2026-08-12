@@ -110,7 +110,19 @@ export const WeaponModule = (function() {
         { name: "吸星渦流", runes: ["坦", "燮", "爚", "璿"], effect: "近距離傷害+6、1%收取魔力+21、擊中時6%機率施展魔力奪取" }
     ];
 
+    // 初始化全域 Tooltip 容器
+    function ensureGlobalTooltip() {
+        let tooltip = document.getElementById('globalRuneTooltip');
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.id = 'globalRuneTooltip';
+            document.body.appendChild(tooltip);
+        }
+        return tooltip;
+    }
+
     async function render() {
+        const tooltip = ensureGlobalTooltip();
         const nameQuery = document.getElementById('weaponSearchName').value.trim().toLowerCase();
         const runeQuery = document.getElementById('weaponSearchRune').value.trim().toLowerCase();
         const effectQuery = document.getElementById('weaponSearchEffect').value.trim().toLowerCase();
@@ -154,62 +166,71 @@ export const WeaponModule = (function() {
 
         filtered.forEach(item => {
             const tr = document.createElement('tr');
-            
             let totalPrice = 0;
             let missingPrice = false;
 
-            const runeTags = item.runes
-                .filter(r => r !== '-')
-                .map(r => {
-                    const stat = runeStats[r];
-                    let tooltipHtml = '';
+            const runeTd = document.createElement('td');
 
+            item.runes.filter(r => r !== '-').forEach(r => {
+                const stat = runeStats[r];
+                const tag = document.createElement('span');
+                tag.className = 'rune-tag';
+                tag.innerText = r;
+                tag.onclick = () => window.WeaponModule.quickSearchRune(r);
+
+                if (stat) {
+                    totalPrice += stat.latestPrice;
+                } else {
+                    missingPrice = true;
+                }
+
+                // 綁定 Hover 顯示動態 Floating Tooltip 事件
+                tag.onmouseenter = (e) => {
                     if (stat) {
-                        totalPrice += stat.latestPrice;
                         const rangeText = stat.minPrice === stat.maxPrice 
                             ? `${stat.minPrice.toLocaleString()}`
                             : `${stat.minPrice.toLocaleString()} ~ ${stat.maxPrice.toLocaleString()}`;
                         
-                        tooltipHtml = `
-                            <div class="rune-tooltip">
-                                <div><strong>【${r}】價格資訊</strong></div>
-                                <div>區間：${rangeText}</div>
-                                <div>最新：${stat.latestPrice.toLocaleString()} (${stat.latestDate})</div>
-                            </div>
+                        tooltip.innerHTML = `
+                            <div><strong style="color:#f1c40f;">【${r}】價格資訊</strong></div>
+                            <div>區間：${rangeText}</div>
+                            <div>最新：${stat.latestPrice.toLocaleString()} <span style="color:#888;">(${stat.latestDate})</span></div>
                         `;
                     } else {
-                        missingPrice = true;
-                        tooltipHtml = `
-                            <div class="rune-tooltip">
-                                <div><strong>【${r}】價格資訊</strong></div>
-                                <div style="color:#e74c3c;">尚未登錄價格資料</div>
-                            </div>
+                        tooltip.innerHTML = `
+                            <div><strong style="color:#f1c40f;">【${r}】價格資訊</strong></div>
+                            <div style="color:#e74c3c;">尚未登錄價格資料</div>
                         `;
                     }
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX + 12) + 'px';
+                    tooltip.style.top = (e.clientY + 12) + 'px';
+                };
 
-                    return `
-                        <div class="rune-tag-container">
-                            <span class="rune-tag" onclick="window.WeaponModule.quickSearchRune('${r}')">${r}</span>
-                            ${tooltipHtml}
-                        </div>
-                    `;
-                })
-                .join('');
+                tag.onmousemove = (e) => {
+                    tooltip.style.left = (e.clientX + 12) + 'px';
+                    tooltip.style.top = (e.clientY + 12) + 'px';
+                };
 
-            // 組合估估計總價顯示邏輯：只要有缺價就顯示「缺價」
-            let priceDisplay = '';
-            if (missingPrice) {
-                priceDisplay = '<span class="price-missing">缺價</span>';
-            } else {
-                priceDisplay = `<span class="price-tag">${totalPrice.toLocaleString()}</span>`;
-            }
+                tag.onmouseleave = () => {
+                    tooltip.style.display = 'none';
+                };
+
+                runeTd.appendChild(tag);
+            });
+
+            // 組合估算總價：有缺價則顯示缺價
+            let priceDisplay = missingPrice 
+                ? '<span class="price-missing">缺價</span>' 
+                : `<span class="price-tag">${totalPrice.toLocaleString()}</span>`;
 
             tr.innerHTML = `
                 <td><strong>${item.name}</strong></td>
-                <td>${runeTags}</td>
+                <td></td>
                 <td>${priceDisplay}</td>
                 <td>${item.effect}</td>
             `;
+            tr.children[1].replaceWith(runeTd);
             tbody.appendChild(tr);
         });
 

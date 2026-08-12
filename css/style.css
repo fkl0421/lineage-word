@@ -117,12 +117,7 @@ tr:hover {
     background-color: #25252d;
 }
 
-/* 神文標籤與 Tooltip 懸停提示容器 */
-.rune-tag-container {
-    position: relative;
-    display: inline-block;
-    margin-right: 4px;
-}
+/* 神文標籤 */
 .rune-tag {
     display: inline-block;
     background-color: #2d2b1f;
@@ -134,47 +129,30 @@ tr:hover {
     font-size: 14px;
     cursor: pointer;
     user-select: none;
+    margin-right: 4px;
+    margin-bottom: 2px;
 }
 .rune-tag:hover {
     background-color: #e67e22;
     color: #fff;
 }
 
-/* 懸停價格提示 Tooltip */
-.rune-tooltip {
-    visibility: hidden;
-    width: 210px;
+/* JS 動態全域 Hover 懸停提示框 (不受 Table overflow 影響) */
+#globalRuneTooltip {
+    position: fixed;
+    display: none;
+    z-index: 9999;
+    width: 220px;
     background-color: #1a1a20;
     color: #fff;
     text-align: left;
     border-radius: 6px;
-    padding: 8px 12px;
-    position: absolute;
-    z-index: 200;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+    padding: 10px 12px;
     border: 1px solid #e67e22;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.9);
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.6;
     pointer-events: none;
-}
-.rune-tooltip::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #e67e22 transparent transparent transparent;
-}
-.rune-tag-container:hover .rune-tooltip {
-    visibility: visible;
-    opacity: 1;
 }
 
 .price-tag {
