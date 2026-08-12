@@ -4,6 +4,9 @@ import { ArmorModule } from './armor.js';
 
 export const PriceModule = (function() {
 
+    let currentSelectedCategory = 'dim'; // 預設選擇微光神字
+    let currentSelectedRune = null;      // 當前選擇單字
+
     function getCategorizedRunes() {
         const allRunes = new Set();
         const weaponData = WeaponModule.getRawData();
@@ -37,48 +40,126 @@ export const PriceModule = (function() {
         const stats = {};
 
         history.forEach(item => {
+            const price = Number(item.price);
             if (!stats[item.name]) {
-                stats[item.name] = { total: 0, count: 0, latestPrice: 0, latestDate: '' };
+                stats[item.name] = { 
+                    minPrice: price, 
+                    maxPrice: price, 
+                    count: 0, 
+                    latestPrice: 0, 
+                    latestDate: '' 
+                };
             }
-            stats[item.name].total += Number(item.price);
+            
+            if (price < stats[item.name].minPrice) stats[item.name].minPrice = price;
+            if (price > stats[item.name].maxPrice) stats[item.name].maxPrice = price;
+
             stats[item.name].count += 1;
 
             if (!stats[item.name].latestDate || new Date(item.date) >= new Date(stats[item.name].latestDate)) {
                 stats[item.name].latestDate = item.date;
-                stats[item.name].latestPrice = Number(item.price);
+                stats[item.name].latestPrice = price;
             }
         });
 
-        Object.keys(stats).forEach(name => {
-            stats[name].avg = Math.round(stats[name].total / stats[name].count);
-        });
-
         return stats;
+    }
+
+    function renderCategoryTabs() {
+        document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
+        const targetBtn = document.getElementById(`catBtn-${currentSelectedCategory}`);
+        if (targetBtn) targetBtn.classList.add('active');
+
+        const categorized = getCategorizedRunes();
+        const runeList = categorized[currentSelectedCategory] || [];
+        const container = document.getElementById('runeBtnContainer');
+        container.innerHTML = '';
+
+        if (runeList.length === 0) {
+            container.innerHTML = '<span style="color:#888;">無神文字</span>';
+            return;
+        }
+
+        runeList.forEach(rune => {
+            const btn = document.createElement('button');
+            btn.className = `rune-select-btn ${currentSelectedRune === rune ? 'active' : ''}`;
+            btn.innerText = rune;
+            btn.onclick = () => selectRune(rune);
+            container.appendChild(btn);
+        });
+    }
+
+    async function selectCategory(catKey) {
+        currentSelectedCategory = catKey;
+        const categorized = getCategorizedRunes();
+        const runeList = categorized[catKey] || [];
+        
+        // 切換分類時，預設選擇該分類的第一個字
+        if (runeList.length > 0) {
+            currentSelectedRune = runeList[0];
+        } else {
+            currentSelectedRune = null;
+        }
+
+        renderCategoryTabs();
+        await updateAllViews();
+    }
+
+    async function selectRune(rune) {
+        currentSelectedRune = rune;
+        renderCategoryTabs();
+        await updateAllViews();
+    }
+
+    async function updateAllViews() {
+        const titleElem = document.getElementById('selectedRuneTitle');
+        if (currentSelectedRune) {
+            titleElem.innerText = `🔍 當前檢視神文字：『 ${currentSelectedRune} 』`;
+        } else {
+            titleElem.innerText = '請點擊上方神文字查看數據與走勢';
+        }
+
+        await renderAvgPriceTable();
+        await renderHistoryTable();
+        await drawChart();
     }
 
     async function renderAvgPriceTable() {
         const tbody = document.getElementById('avgPriceTableBody');
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">載入中...</td></tr>';
         
-        const stats = await calculateStats();
-        tbody.innerHTML = '';
-        const runeNames = Object.keys(stats).sort();
-
-        if (runeNames.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">尚未有價格紀錄資料</td></tr>';
+        if (!currentSelectedRune) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">請選擇神文字以檢視統計</td></tr>';
             return;
         }
 
-        runeNames.forEach(name => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${name}</strong></td>
-                <td><span class="price-tag">${stats[name].avg.toLocaleString()}</span></td>
-                <td>${stats[name].latestPrice.toLocaleString()}</td>
-                <td>${stats[name].count} 筆</td>
-            `;
-            tbody.appendChild(tr);
-        });
+        const stats = await calculateStats();
+        tbody.innerHTML = '';
+
+        const runeStat = stats[currentSelectedRune];
+
+        if (!runeStat) {
+            tbody.innerHTML = `<tr>
+                <td><strong>${currentSelectedRune}</strong></td>
+                <td colspan="3" style="text-align:center; color:#888;">尚未有紀錄資料</td>
+            </tr>`;
+            return;
+        }
+
+        const tr = document.createElement('tr');
+        const priceRangeStr = runeStat.minPrice === runeStat.maxPrice 
+            ? `${runeStat.minPrice.toLocaleString()}`
+            : `${runeStat.minPrice.toLocaleString()} ~ ${runeStat.maxPrice.toLocaleString()}`;
+
+        const latestPriceStr = `${runeStat.latestPrice.toLocaleString()} <span style="color:#aaa; font-size:13px;">(${runeStat.latestDate})</span>`;
+
+        tr.innerHTML = `
+            <td><strong>${currentSelectedRune}</strong></td>
+            <td><span class="price-tag">${priceRangeStr}</span></td>
+            <td>${latestPriceStr}</td>
+            <td>${runeStat.count} 筆</td>
+        `;
+        tbody.appendChild(tr);
     }
 
     async function renderHistoryTable() {
@@ -91,14 +172,21 @@ export const PriceModule = (function() {
 
         document.getElementById('thActionHeader').style.display = isAdmin ? 'table-cell' : 'none';
 
-        if (history.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center; color:#888;">尚未有歷史明細</td></tr>`;
+        if (!currentSelectedRune) {
+            tbody.innerHTML = `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center; color:#888;">請選擇神文字</td></tr>`;
             return;
         }
 
-        const sorted = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const filtered = history
+            .filter(r => r.name === currentSelectedRune)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        sorted.forEach(item => {
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${isAdmin ? 4 : 3}" style="text-align:center; color:#888;">尚無『 ${currentSelectedRune} 』的歷史明細</td></tr>`;
+            return;
+        }
+
+        filtered.forEach(item => {
             const tr = document.createElement('tr');
             let actionTd = isAdmin ? `<td><button class="btn-del" onclick="window.PriceModule.deleteRecord('${item.id}')">刪除</button></td>` : '';
             
@@ -151,31 +239,30 @@ export const PriceModule = (function() {
     async function drawChart() {
         const canvas = document.getElementById('priceChartCanvas');
         const ctx = canvas.getContext('2d');
-        const selectedRune = document.getElementById('priceChartRuneSelect').value;
 
         canvas.width = canvas.parentElement.clientWidth - 30;
         canvas.height = 250;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (!selectedRune) {
+        if (!currentSelectedRune) {
             ctx.fillStyle = "#888";
             ctx.font = "16px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("請先選擇上方『分類』與『神字』以檢視走勢曲線", canvas.width / 2, canvas.height / 2);
+            ctx.fillText("請點擊上方神文字以檢視走勢曲線", canvas.width / 2, canvas.height / 2);
             return;
         }
 
         const history = await PriceStorage.getHistoryAsync();
         const runeRecords = history
-            .filter(r => r.name === selectedRune)
+            .filter(r => r.name === currentSelectedRune)
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
         if (runeRecords.length < 2) {
             ctx.fillStyle = "#888";
             ctx.font = "16px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("資料筆數不足（需至少 2 筆紀錄）以劃出走勢曲線", canvas.width / 2, canvas.height / 2);
+            ctx.fillText(`『 ${currentSelectedRune} 』資料筆數不足（需至少 2 筆紀錄）以劃出走勢曲線`, canvas.width / 2, canvas.height / 2);
             return;
         }
 
@@ -219,23 +306,31 @@ export const PriceModule = (function() {
             ctx.fillStyle = "#e1e1e6";
             ctx.font = "12px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(p.price, p.x, p.y - 10);
+            ctx.fillText(Number(p.price).toLocaleString(), p.x, p.y - 10);
             ctx.fillText(p.date.slice(5), p.x, canvas.height - padding + 20);
         });
     }
 
     return {
         init: function() {
-            Auth.onAuthReady(() => {
+            Auth.onAuthReady(async () => {
                 renderAuthBar();
                 if (document.getElementById('priceDateInput')) {
                     document.getElementById('priceDateInput').valueAsDate = new Date();
                 }
-                renderAvgPriceTable();
-                renderHistoryTable();
-                drawChart();
+
+                // 預設選擇微光神字的第一個字
+                const categorized = getCategorizedRunes();
+                if (categorized.dim && categorized.dim.length > 0) {
+                    currentSelectedRune = categorized.dim[0];
+                }
+
+                renderCategoryTabs();
+                await updateAllViews();
             });
         },
+        selectCategory: selectCategory,
+        selectRune: selectRune,
         loginWithGoogle: async function() {
             const res = await Auth.loginWithGoogle();
             if (!res.success) {
@@ -245,17 +340,14 @@ export const PriceModule = (function() {
         logout: function() {
             Auth.logout();
         },
-        onCategoryChange: function(catSelectId, runeSelectId) {
+        onAddCategoryChange: function(catSelectId, runeSelectId) {
             const catValue = document.getElementById(catSelectId).value;
             const runeSelect = document.getElementById(runeSelectId);
             const categorized = getCategorizedRunes();
 
             runeSelect.innerHTML = '<option value="">2. 選擇神字...</option>';
 
-            if (!catValue || !categorized[catValue]) {
-                if (runeSelectId === 'priceChartRuneSelect') drawChart();
-                return;
-            }
+            if (!catValue || !categorized[catValue]) return;
 
             categorized[catValue].forEach(r => {
                 const opt = document.createElement('option');
@@ -263,10 +355,6 @@ export const PriceModule = (function() {
                 opt.innerText = r;
                 runeSelect.appendChild(opt);
             });
-
-            if (runeSelectId === 'priceChartRuneSelect') {
-                drawChart();
-            }
         },
         addRecord: async function() {
             if (!Auth.isAdmin()) {
@@ -286,9 +374,11 @@ export const PriceModule = (function() {
             try {
                 await PriceStorage.addRecordAsync(name, date, price);
                 document.getElementById('priceValueInput').value = '';
-                await renderAvgPriceTable();
-                await renderHistoryTable();
-                await drawChart();
+                
+                // 新增紀錄後自動切換至該神文字進行檢視
+                currentSelectedRune = name;
+                renderCategoryTabs();
+                await updateAllViews();
             } catch (err) {
                 alert("新增失敗: " + err.message);
             }
@@ -303,9 +393,7 @@ export const PriceModule = (function() {
 
             try {
                 await PriceStorage.deleteRecordAsync(id);
-                await renderAvgPriceTable();
-                await renderHistoryTable();
-                await drawChart();
+                await updateAllViews();
             } catch (err) {
                 alert("刪除失敗: " + err.message);
             }

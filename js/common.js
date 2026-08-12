@@ -5,6 +5,7 @@ export const AGILE_RUNES = new Set(["勒", "奧", "劮", "輝", "卍", "爚", "�
 // 👑 管理者 Email 白名單（只有列表中的 Email 登入後才具備修改權限）
 const ADMIN_EMAILS = new Set([
     "fkl0421@gmail.com", // 👈 請填入你自己的 Google 信箱
+	"joe01310109@gmail.com",
     // "friend_email@gmail.com"     // 若要給朋友權限，可以多加幾行
 ]);
 

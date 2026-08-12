@@ -5,6 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>價格走勢 - 神憶查詢系統</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* 標籤選單樣式 */
+        .category-tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .cat-btn {
+            padding: 8px 16px;
+            background-color: #1a1a1e;
+            border: 1px solid #444;
+            color: #aaa;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        .cat-btn:hover {
+            color: #fff;
+            border-color: #e67e22;
+        }
+        .cat-btn.active {
+            background-color: #e67e22;
+            color: #fff;
+            border-color: #f1c40f;
+        }
+        .rune-btn-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background-color: #111115;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #2a2a30;
+            margin-bottom: 25px;
+            min-height: 48px;
+            align-items: center;
+        }
+        .rune-select-btn {
+            padding: 6px 14px;
+            background-color: #222228;
+            border: 1px solid #555;
+            color: #f1c40f;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        .rune-select-btn:hover {
+            background-color: #e67e22;
+            color: #fff;
+            border-color: #f1c40f;
+        }
+        .rune-select-btn.active {
+            background-color: #f1c40f;
+            color: #111;
+            border-color: #fff;
+            box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        }
+        .current-selected-title {
+            color: #f39c12;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 <div class="container">
@@ -24,7 +92,7 @@
         <div id="adminAddSection" style="display: none;">
             <h2>新增價格紀錄 (管理者專用)</h2>
             <div class="form-group">
-                <select id="priceAddCatSelect" class="form-input" style="width: 160px;" onchange="window.PriceModule.onCategoryChange('priceAddCatSelect', 'priceAddRuneSelect')">
+                <select id="priceAddCatSelect" class="form-input" style="width: 160px;" onchange="window.PriceModule.onAddCategoryChange('priceAddCatSelect', 'priceAddRuneSelect')">
                     <option value="">1. 選擇字分類...</option>
                     <option value="dim">✨ 微光神字</option>
                     <option value="bright">🌟 明亮神字</option>
@@ -39,14 +107,27 @@
             </div>
         </div>
 
-        <h2>神文字平均價格統計</h2>
+        <h2>神文字選擇</h2>
+        <div class="category-tab-container">
+            <button class="cat-btn active" id="catBtn-dim" onclick="window.PriceModule.selectCategory('dim')">✨ 微光神字</button>
+            <button class="cat-btn" id="catBtn-bright" onclick="window.PriceModule.selectCategory('bright')">🌟 明亮神字</button>
+            <button class="cat-btn" id="catBtn-agile" onclick="window.PriceModule.selectCategory('agile')">⚡ 靈動神字</button>
+        </div>
+
+        <div class="rune-btn-grid" id="runeBtnContainer">
+            <!-- 由 JS 動態生成神字點選按鈕 -->
+        </div>
+
+        <div class="current-selected-title" id="selectedRuneTitle">請點擊上方神文字查看數據與走勢</div>
+
+        <h2>神文字價格區間與最新紀錄</h2>
         <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
                         <th>神文字</th>
-                        <th>平均價格</th>
-                        <th>最新價格</th>
+                        <th>價格區間 (最低 ~ 最高)</th>
+                        <th>最新價格 (日期)</th>
                         <th>紀錄筆數</th>
                     </tr>
                 </thead>
@@ -54,19 +135,7 @@
             </table>
         </div>
 
-        <h2>走勢圖查詢</h2>
-        <div class="form-group">
-            <select id="priceChartCatSelect" class="form-input" style="width: 160px;" onchange="window.PriceModule.onCategoryChange('priceChartCatSelect', 'priceChartRuneSelect')">
-                <option value="">1. 選擇字分類...</option>
-                <option value="dim">✨ 微光神字</option>
-                <option value="bright">🌟 明亮神字</option>
-                <option value="agile">⚡ 靈動神字</option>
-            </select>
-            <select id="priceChartRuneSelect" class="form-input" style="width: 140px;" onchange="window.PriceModule.drawChart()">
-                <option value="">2. 選擇神字...</option>
-            </select>
-        </div>
-
+        <h2>價格走勢圖</h2>
         <div class="chart-box">
             <canvas id="priceChartCanvas"></canvas>
         </div>
